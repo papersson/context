@@ -1,3 +1,10 @@
+---
+input: direct_prose | raw_text
+output: direct_prose
+composes_with: []
+version: 1.0
+---
+
 # Prose Rhythm Transformation
 
 Transform this text to create musical variation through sentence length. Apply Gary Provost's principles of rhythmic prose.

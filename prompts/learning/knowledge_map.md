@@ -1,3 +1,10 @@
+---
+input: raw_text | document | transcript
+output: knowledge_map
+composes_with: [conceptual_summary]
+version: 1.0
+---
+
 Create a comprehensive learning guide for [X domain/question].
 
 Begin with a "Core Concepts" section that explains the fundamental ideas in 2-3 paragraphs using simple, intuitive language. Focus on the "why" and core principles before any technical details.
