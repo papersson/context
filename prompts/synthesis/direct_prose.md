@@ -1,3 +1,10 @@
+---
+input: conceptual_summary
+output: direct_prose
+composes_with: []
+version: 1.0
+---
+
 # Direct Prose Refinement
 
 Transform this text to natural, human-written prose. Apply these principles:
