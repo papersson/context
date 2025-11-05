@@ -1,105 +1,131 @@
-# Domain-to-Types Translator
+# Context Repository
 
-You are an expert at translating domain expert interviews into a type-driven domain model. Your goal is to create executable documentation where the code IS the design.
+A curated knowledge base for Falck, optimized for LLM context retrieval and organizational knowledge management.
 
-## Input
-One or more interview transcripts with domain experts discussing business processes, rules, and workflows.
+## Purpose
 
-## Your Task
+This repository provides high-quality, stable documentation that can be easily retrieved and used as context for LLM interactions (Claude, ChatGPT, etc.) or future AI agents. It follows the principle of **trust over volume** - better to have 100 pages you can trust than 10,000 where some are wrong.
 
-### 1. Extract Domain Concepts
-Identify from the interviews:
-- **Nouns** → become types (Order, Customer, Invoice)
-- **Verbs** → become functions/workflows (ValidateOrder, SendInvoice)
-- **Business rules** → become type constraints ("must have", "can only", "either...or")
-- **States** → become separate types in a state machine (UnvalidatedOrder, ValidatedOrder, PricedOrder)
-- **Contexts** → become bounded contexts with distinct models
+## Structure
 
-### 2. Document Using AND/OR Notation
-Before creating types, document the domain using this notation:
+### `falck-knowledge-base/`
+The central knowledge base for Falck-specific information.
+
+- **`domains/`** - Business capabilities (contracts, hr, finance, operations)
+  - Organized by what the organization does, not who does it
+  - Each domain contains processes, system usage, and domain-specific glossaries
+  - Stable across organizational changes
+
+- **`systems/`** - Technical systems documentation
+  - Comprehensive guides for tools and platforms (Ironclad, Workday, etc.)
+  - What it is, how it works, how we use it, how to get access
+  - Reusable context that can be referenced from multiple domains
+
+- **`processes/`** - Cross-cutting workflows
+  - Processes that span multiple domains or teams
+  - Examples: vendor onboarding, compliance reporting
+
+- **`people/`** - Organizational structure and contacts
+  - Current org chart and team structures
+  - Team → domain ownership mappings
+  - Updated as organization changes
+
+- **`glossary.md`** - Central terminology
+  - Cross-cutting, established terms used across Falck
+  - For ambiguous terms, points to domain-specific glossaries
+
+### Other Directories
+
+- **`instructions/`** - Multi-turn behavioral context
+  - Shapes how agents/chatbots work across entire conversations
+  - Applied once at conversation start (system prompt layer)
+  - Defines "who you are" and "how you approach problems"
+  - Examples: search methodology, agent personality, context engineering principles
+
+- **`prompts/`** - Single-purpose transformations
+  - Discrete input → output tasks
+  - Often one-shot, sometimes chained in sequences
+  - Defines "do this specific thing"
+  - Examples: clean transcript, summarize meeting, change writing style
+
+- **`concepts/`** - Universal reference knowledge
+  - Knowledge that applies anywhere, not Falck-specific
+  - Stable reference material (AI, software, domain concepts)
+  - Rarely updated - canonical knowledge often in LLM training already
+
+## How to Use This Repository
+
+### For Manual LLM Context
+1. Navigate to relevant domain or system documentation
+2. Copy-paste markdown content into your LLM conversation
+3. Reference multiple docs as needed for complete context
+
+### For Building Chatbots/Agents
+- Use documentation as system prompts or RAG source material
+- Each document is comprehensive and context-efficient
+- Frontmatter provides metadata (owner, last updated, relevance)
+
+### For Knowledge Management
+- Every document has an owner responsible for accuracy
+- Documentation is the work, not something done after
+- Start with high-value, frequently-referenced content
+- Promote mature documentation from project repos to central KB
+
+## Knowledge Base Principles
+
+### 1. The Knowledge Base Is the Product
+Treat it as a product with a roadmap, owner, and investment.
+
+### 2. Trust Over Volume
+Quality and freshness matter more than comprehensive coverage.
+
+### 3. Every Page Has an Owner
+Documents without owners become stale. Owner listed in frontmatter.
+
+### 4. Make It Faster Than Asking
+Searching must be faster than asking a colleague, or people will ask.
+
+### 5. Documentation Is the Work
+Documentation is part of completing the task, not an afterthought.
+
+### 6. Never Migrate Garbage
+Start clean with high-value pages. Don't bulk-migrate existing content.
+
+## Document Standards
+
+### Frontmatter
+All knowledge base documents should include:
+```yaml
+---
+owner: name (email)
+owner_team: team name
+last_updated: YYYY-MM-DD
+status: draft | stable | deprecated
+---
 ```
-data Order =
-  CustomerInfo
-  AND ShippingAddress
-  AND list of OrderLine
-  AND AmountToBill
 
-data PaymentMethod =
-  CreditCard
-  OR BankTransfer
-  OR Cash
+### Lifecycle
+- **Project repos** contain raw notes, drafts, and public docs during active work
+- **Central KB** receives promoted copies of mature, stable documentation
+- Project repos remain source of truth; KB has published versions
+- Documents updated in-place, versioned via git history
 
-workflow "Place Order" =
-  input: UnvalidatedOrder
-  output: OrderPlaced OR ValidationError
-```
+## Contributing
 
-### 3. Identify Patterns and Apply Modeling Techniques
+1. Identify frequently-referenced knowledge
+2. Create or update documentation in appropriate location
+3. Add required frontmatter
+4. Ensure you or someone commits to being the owner
+5. Keep it current - stale docs destroy trust
 
-**Constrained Values**: When you hear "must be between X and Y", "starts with", "cannot be negative"
-→ Create a simple type with smart constructor
+## Getting Started
 
-**Required Combinations**: When you hear "must have either email or phone"
-→ Model as explicit choice type with all valid combinations
+Start by exploring:
+- `domains/contracts/` - contract management processes
+- `glossary.md` - key terminology
+- `people/org-structure.md` - current organizational structure
 
-**State Transitions**: When the same entity has different rules at different times
-→ Create separate types for each state (UnverifiedEmail vs VerifiedEmail)
+---
 
-**Invariants**: Business rules that must always hold
-→ Encode in the type system (NonEmptyList for "must have at least one")
-
-**Identity**:
-- Things that change but remain "the same" → Entities (need IDs)
-- Things where only the data matters → Value Objects (no ID needed)
-
-### 4. Design Principles
-
-**Make Illegal States Unrepresentable**: If the business says "you can't do X when Y", make it impossible to construct that state.
-
-**Parse, Don't Validate**: Transform untrusted input into validated types at boundaries. Inside the domain, trust the types.
-
-**Total Functions**: Every workflow step should handle all cases explicitly - no hidden exceptions.
-
-**Explicit Effects**: If a function can fail, does I/O, or is async, show it in the type signature.
-
-### 5. Output Structure
-
-Organize your model into:
-1. **Simple Types** - Basic building blocks with constraints
-2. **Compound Types** - Combinations using AND
-3. **Choice Types** - Alternatives using OR
-4. **State Types** - Different states of entities
-5. **Workflows** - Function types showing transformations
-6. **Events** - Things that happened
-7. **Commands** - Things requested to happen
-
-## Example Transformation
-
-Interview: "New patients must book an intake appointment first. It's 45 minutes and only doctors can do them, not nurse practitioners."
-
-Becomes:
-```
-// Simple types
-data PatientType = NewPatient OR EstablishedPatient
-data ProviderType = Doctor OR NursePractitioner
-data AppointmentDuration = FortyFiveMinutes OR FifteenMinutes OR ThirtyMinutes
-
-// Business rule as type
-data IntakeAppointment = {
-  Patient: NewPatient  // Only new patients
-  Provider: Doctor      // Only doctors
-  Duration: FortyFiveMinutes  // Always 45 min
-}
-
-// Workflow
-workflow "Book Intake" =
-  input: UnvalidatedBookingRequest
-  output: IntakeAppointment OR BookingError
-
-  if patient is not NewPatient:
-    return Error "New patients only"
-  if provider is not Doctor:
-    return Error "Doctor required for intake"
-```
-
-Remember: The goal is a domain model that a domain expert can read and verify, but that also compiles and guides implementation.
+**Repository Owner:** Patrik Persson (patrik.persson@falck.com)
+**Last Updated:** 2025-11-05
