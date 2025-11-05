@@ -1,105 +1,100 @@
-# Domain-to-Types Translator
+# Concepts
 
-You are an expert at translating domain expert interviews into a type-driven domain model. Your goal is to create executable documentation where the code IS the design.
+Universal reference knowledge that applies anywhere, not specific to Falck.
 
-## Input
-One or more interview transcripts with domain experts discussing business processes, rules, and workflows.
+## Purpose
 
-## Your Task
+Concepts contain stable, canonical knowledge that is broadly applicable across organizations and contexts. This is reference material that helps LLMs understand domains, methods, or technical topics that may not be well-represented in their training data.
 
-### 1. Extract Domain Concepts
-Identify from the interviews:
-- **Nouns** → become types (Order, Customer, Invoice)
-- **Verbs** → become functions/workflows (ValidateOrder, SendInvoice)
-- **Business rules** → become type constraints ("must have", "can only", "either...or")
-- **States** → become separate types in a state machine (UnvalidatedOrder, ValidatedOrder, PricedOrder)
-- **Contexts** → become bounded contexts with distinct models
+## Concepts vs. Falck Knowledge Base
 
-### 2. Document Using AND/OR Notation
-Before creating types, document the domain using this notation:
-```
-data Order =
-  CustomerInfo
-  AND ShippingAddress
-  AND list of OrderLine
-  AND AmountToBill
+**Use Concepts for:**
+- Universal knowledge that applies at any company
+- Stable reference material (rarely changes)
+- Domain concepts, technical methods, industry standards
+- Knowledge to fill gaps in LLM training
 
-data PaymentMethod =
-  CreditCard
-  OR BankTransfer
-  OR Cash
+**Use Falck Knowledge Base for:**
+- Falck-specific operational knowledge
+- Internal processes, systems, organizational structure
+- "How we do things at Falck"
+- See [falck-knowledge-base/](../falck-knowledge-base/) instead
 
-workflow "Place Order" =
-  input: UnvalidatedOrder
-  output: OrderPlaced OR ValidationError
-```
+## Decision Rule
 
-### 3. Identify Patterns and Apply Modeling Techniques
+**Ask: "Would this knowledge be useful at another company?"**
 
-**Constrained Values**: When you hear "must be between X and Y", "starts with", "cannot be negative"
-→ Create a simple type with smart constructor
+Examples:
+- ✓ "How contract classification generally works in legal tech" → concepts/domains/legal/
+- ✗ "How Falck classifies contracts in Ironclad" → falck-knowledge-base/domains/contracts/
+- ✓ "Context engineering principles for LLMs" → concepts/ai/
+- ✗ "How we use Claude at Falck" → falck-knowledge-base/systems/
+- ✓ "Software architecture patterns" → concepts/software/
+- ✗ "Falck's system architecture" → falck-knowledge-base/systems/
 
-**Required Combinations**: When you hear "must have either email or phone"
-→ Model as explicit choice type with all valid combinations
+## Current Categories
 
-**State Transitions**: When the same entity has different rules at different times
-→ Create separate types for each state (UnverifiedEmail vs VerifiedEmail)
+### [ai/](ai/)
+AI, ML, and LLM concepts.
+- `context_engineering_draft.md` - Context engineering principles and patterns
 
-**Invariants**: Business rules that must always hold
-→ Encode in the type system (NonEmptyList for "must have at least one")
+### [domains/](domains/)
+Domain-specific universal knowledge.
+- To be populated with cross-industry domain concepts
+- Examples: legal tech, healthcare operations, logistics
 
-**Identity**:
-- Things that change but remain "the same" → Entities (need IDs)
-- Things where only the data matters → Value Objects (no ID needed)
+### [software/](software/)
+Software engineering concepts.
+- To be populated with patterns, architectures, methodologies
+- Examples: design patterns, testing strategies, architecture styles
 
-### 4. Design Principles
+## When to Add Concepts
 
-**Make Illegal States Unrepresentable**: If the business says "you can't do X when Y", make it impossible to construct that state.
+Concepts should be **rarely added**. Before adding:
 
-**Parse, Don't Validate**: Transform untrusted input into validated types at boundaries. Inside the domain, trust the types.
+1. **Check if it's truly universal**: Would this apply elsewhere?
+2. **Check if LLMs already know it**: Is this canonical knowledge likely in training data?
+3. **Check if it's actually needed**: Are you solving a real problem?
 
-**Total Functions**: Every workflow step should handle all cases explicitly - no hidden exceptions.
+Most domain knowledge is already in LLM training. Add concepts only when:
+- The topic is specialized or emerging
+- You need specific framing or methodology
+- LLMs consistently lack this knowledge
+- It will be referenced frequently
 
-**Explicit Effects**: If a function can fail, does I/O, or is async, show it in the type signature.
+## Adding New Concepts
 
-### 5. Output Structure
+1. Verify it's universal, not Falck-specific
+2. Verify it fills a gap in LLM knowledge
+3. Create file in appropriate category: `concepts/category/name.md`
+4. Focus on stable, reference-quality content
+5. Include sources or citations where relevant
+6. Update this README
 
-Organize your model into:
-1. **Simple Types** - Basic building blocks with constraints
-2. **Compound Types** - Combinations using AND
-3. **Choice Types** - Alternatives using OR
-4. **State Types** - Different states of entities
-5. **Workflows** - Function types showing transformations
-6. **Events** - Things that happened
-7. **Commands** - Things requested to happen
+## Using Concepts
 
-## Example Transformation
+### As LLM Context
+Add concepts to conversations when you need to establish shared understanding of a domain or method:
 
-Interview: "New patients must book an intake appointment first. It's 45 minutes and only doctors can do them, not nurse practitioners."
-
-Becomes:
-```
-// Simple types
-data PatientType = NewPatient OR EstablishedPatient
-data ProviderType = Doctor OR NursePractitioner
-data AppointmentDuration = FortyFiveMinutes OR FifteenMinutes OR ThirtyMinutes
-
-// Business rule as type
-data IntakeAppointment = {
-  Patient: NewPatient  // Only new patients
-  Provider: Doctor      // Only doctors
-  Duration: FortyFiveMinutes  // Always 45 min
-}
-
-// Workflow
-workflow "Book Intake" =
-  input: UnvalidatedBookingRequest
-  output: IntakeAppointment OR BookingError
-
-  if patient is not NewPatient:
-    return Error "New patients only"
-  if provider is not Doctor:
-    return Error "Doctor required for intake"
+```bash
+# Example: Add context engineering knowledge to a conversation
+cat concepts/ai/context_engineering_draft.md
 ```
 
-Remember: The goal is a domain model that a domain expert can read and verify, but that also compiles and guides implementation.
+### With Falck Knowledge
+Combine universal concepts with Falck-specific knowledge:
+
+```bash
+# Universal + Specific
+cat concepts/domains/legal/contract-management.md
+cat falck-knowledge-base/domains/contracts/classification-process.md
+```
+
+### For Onboarding
+Use concepts to educate LLMs (or people) on domains before diving into Falck-specific details.
+
+## Related Documentation
+
+- [Falck Knowledge Base](../falck-knowledge-base/) - Falck-specific operational knowledge
+- [Instructions](../instructions/) - Multi-turn behavioral context
+- [Prompts](../prompts/) - Single-purpose transformations
