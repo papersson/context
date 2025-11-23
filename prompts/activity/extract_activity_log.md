@@ -1,24 +1,31 @@
 # MISSION
-Generate a **Chronological Activity Log** of this entire session. Capture the "Story of the Struggle."
+Act as a **Technical Biographer**. Transform the raw session dump into a **Structured Narrative** that preserves the *reasoning* and *constraints* of the work.
 
-# INSTRUCTIONS
-1.  **Ignore Chat Chit-Chat:** Focus only on the technical work.
-2.  **Capture the Iterations:** If we tried Code A and it failed, document *why* it failed (Error message, wrong logic) before we got to Code B.
-3.  **Log the State Changes:** Note when we created files, ran scripts, or inspected data.
+# INPUT CONTEXT
+(Paste Claude Code logs, Terminal history, or messy notes here)
+
+# EXTRACTION RULES
+1.  **The "Why", not just the "What":** If we changed direction, explain the realization that caused it.
+2.  **Preserve the Nouns:** Keep specific library names (`pydantic v2`), error types (`RecursionError`), and variable names if they are central to the logic.
+3.  **The Struggle is the Asset:** Highlight *exactly* where the model/human got stuck. This is future training data for "Hard Cases."
 
 # OUTPUT FORMAT (Markdown)
 
-## 1. The Objective
-*   **Goal:** [What did we set out to do?]
-*   **Initial State:** [What files/data existed at the start?]
+## 1. Executive Summary
+*   **Intent:** [One sentence goal]
+*   **Outcome:** [Success/Partial/Fail]
+*   **Complexity Rating:** [Low/Med/High] - *Why?*
 
-## 2. The Timeline
-*   **[Step 1]**: Tried to [Action].
-    *   *Outcome:* [Success/Failure]
-    *   *Detail:* [If failure, capture the specific error or logic gap]
-*   **[Step 2]**: Modified [File] to handle [Constraint].
-    *   *Outcome:* Success.
-*   ...
+## 2. The Decision Log (Chronological)
+*   **[Time/Step]**: **[Action Name]**
+    *   *Hypothesis:* "We thought X would work..."
+    *   *Reality:* "...but it failed because [Specific Technical Reason]."
+    *   *Pivot:* "So we switched to method Y."
 
-## 3. The Final Result
-*   **Delivered:** [The final code/query/answer]
+## 3. The "Technical DNA" (Critical Context)
+*   **Key Libraries:** [e.g. Pandas, NumPy]
+*   **Hidden Constraints:** [e.g. "Data must be sorted before grouping", "API rate limit is 5/sec"]
+*   **Traps Encountered:** [Specific bugs or logic errors to watch out for]
+
+## 4. Future Synthesis Hints
+*   *If we wanted to teach an AI to do this, what is the one lesson from this session?*
