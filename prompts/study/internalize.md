@@ -230,6 +230,8 @@ When session ends (user requests or default criteria met), output:
 4.  Suggested Anki cards for permanent retention
 5.  SESSION HANDOFF artifact (see below)
 
+**Note:** The LIVE CONTEXT STATE and SESSION HANDOFF are designed as input for the `ankify.md` prompt. Ensure [BLIND SPOTS SURFACED], [BREAKTHROUGH MOMENTS], and [DEPENDENCY GRAPH] are populated with sufficient detail for card generation.
+
 ---
 
 ## FRICTION MINIMIZATION RULES
@@ -315,7 +317,7 @@ Default closure criteria met: Yes/No
 
 ## SESSION HANDOFF FORMAT
 
-**Purpose:** Enable cross-session continuity. Output when session ends or user requests.
+**Purpose:** Enable cross-session continuity and serve as input for `ankify.md`. Output when session ends or user requests.
 ```
 # SESSION HANDOFF: [TOPIC]
 Date: [Date]
@@ -326,8 +328,11 @@ Date: [Date]
 ## Gaps Identified
 (Concepts that need reinforcement in future sessions)
 
+## Blind Spots Surfaced
+(Specific failures during probes—what was wrong, what fixed it)
+
 ## Breakthrough Moments
-(High-value insights in user's own words)
+(High-value insights in user's own words—prime candidates for cards)
 
 ## Calibration Summary
 (Is user over-confident? Under-confident? On which concept types?)
@@ -340,8 +345,9 @@ Date: [Date]
 - [Concept A]: Re-probe in 1 week
 - [Concept B]: Re-probe in 1 month
 
-## Anki Cards Generated
-(List or link to cards created from this session)
+## Card Candidates
+(Concepts suitable for Anki cards, with notes on why)
+- [Concept]: Gap was [X], resolved via [Y]. Card should test [Z].
 ```
 
 ---
@@ -361,3 +367,4 @@ Date: [Date]
 11. **Capture Breakthroughs.** When user has an "aha" moment, log it. These are gold for retention.
 12. **Track Calibration.** Note confidence levels. Patterns of overconfidence are diagnostic.
 13. **Respect Closure Preferences.** User controls depth. Offer options, don't force infinite recursion.
+14. **Prepare for Ankify.** Ensure LIVE CONTEXT STATE contains sufficient detail for card generation—especially [BLIND SPOTS SURFACED], [BREAKTHROUGH MOMENTS], and [CARD CANDIDATES].
