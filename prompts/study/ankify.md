@@ -14,21 +14,39 @@ Convert a learning session into spaced repetition cards. The input is either a s
 
 **Multiple angles on hard concepts.** Important ideas get 2-3 cards approaching from different directions—not redundant, but reinforcing.
 
+## Card Priority: Model Inversions First
+
+**Highest priority: cards that correct inverted mental models.** These are beliefs the user held confidently that turned out to be backwards or fundamentally wrong—not just magnitude errors or fuzzy areas.
+
+Signs of a model inversion:
+- User assumed X causes Y, but actually Y causes X
+- User assumed A is faster/better than B, but B beats A
+- User conflated two distinct concepts as one
+- User had cause and effect reversed
+- User's intuition pointed confidently in the wrong direction
+
+Model inversions are dangerous because they feel like knowledge. The user doesn't know they're wrong—they think they understand. These must be carded.
+
+**Magnitude errors are lower priority.** Being off by 10x on a reference number is a memorization gap, not a conceptual blind spot. Card these only if the magnitude itself is load-bearing for reasoning (e.g., knowing HDD is slower than network changes architectural decisions).
+
 ## Card Selection Criteria
 
 For each potential card, evaluate:
 
 | Criterion | Question |
 |-----------|----------|
+| **Model inversion?** | Did this correct a confidently-held wrong belief? |
 | **Fundamentality** | Does this apply beyond this specific example? |
 | **Was it a gap?** | Did the user struggle with this, or did it come easily? |
 | **Generativity** | Does understanding this unlock reasoning about other things? |
 | **Decay risk** | Will this fade without reinforcement? |
 | **Retrievability** | Can it be stated in one breath? |
 
-**Card it if:** Fundamental + was a gap + generative + likely to decay + can be stated concisely.
+**Always card:** Model inversions.
 
-**Skip it if:** User already knew it, or it's too specific to the example, or it's derivable from other cards.
+**Card if:** Fundamental + was a gap + generative + likely to decay + can be stated concisely.
+
+**Skip if:** User already knew it, or it's too specific to the example, or it's derivable from other cards.
 
 ## Card Types
 
@@ -47,9 +65,13 @@ For each potential card, evaluate:
 **Reference frame cards:** What's the rough magnitude of X?
 - Use when quantitative intuition was built.
 
+**Inversion cards:** You assume X. When is this wrong?
+- Use when a confident wrong belief was corrected. Frame the front as the trap—the intuition that leads you astray.
+
 ## Process
 
 1. **Extract candidates.** Scan for:
+   - **Model inversions first** (beliefs that were backwards, not just fuzzy)
    - Gaps that were resolved (from BLIND SPOTS SURFACED)
    - Breakthrough moments (from BREAKTHROUGH MOMENTS)
    - Prerequisites that had to be built (from DEPENDENCY GRAPH)
@@ -93,6 +115,8 @@ Use `===` to separate cards from each other.
 
 **Don't over-card.** 6 good cards beat 15 mediocre ones. When in doubt, leave it out.
 
+**Don't treat magnitude errors as model inversions.** Off by 10x is a memorization gap. "Faster thing is actually slower" is a model inversion. Know the difference.
+
 ## Example Transformation
 
 **Session gap:** User didn't understand why writes can be async but reads cannot.
@@ -114,9 +138,28 @@ Posting = save + deliver to followers. User waits for save only.
 Viewing = get the data. Nothing to defer.
 ```
 
+**Example inversion card:**
+
+**Model inversion:** User assumed satellite signals are slower than fiber because satellite is "worse technology."
+
+**Bad card:**
+```
+How fast do satellite signals travel?
+---
+At the speed of light in vacuum, which is faster than light in fiber.
+```
+
+**Good card:**
+```
+Satellite internet has high latency. Is this because satellite signals travel slower than fiber?
+---
+No—opposite. Light in vacuum (satellite) is faster than light in glass (fiber). Satellite latency is high because distance is enormous.
+```
+
 ## Final Check
 
 Before outputting, verify:
+- [ ] Model inversions are carded (highest priority)
 - [ ] Each card tests one thing
 - [ ] Each back is one breath or less
 - [ ] Cards target gaps, not prior knowledge
