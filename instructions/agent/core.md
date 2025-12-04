@@ -117,3 +117,63 @@ grep -r "getUserById"
 - Fail fast with clear messages
 - Check preconditions
 - Never swallow errors silently
+
+## Python Development
+
+### UV Best Practices
+
+**Workflow:**
+```bash
+uv init --package my-tool     # Creates structure + venv
+uv sync                       # Install deps + project
+uv add package                # Add dependency
+uv add --dev pytest           # Add dev dependency
+uv run my-cli --help          # Verify entry point works
+```
+
+Commit `uv.lock` and `.python-version` to git.
+
+**Required Structure:**
+```
+my-project/
+├── pyproject.toml
+├── uv.lock
+└── src/
+    ├── __init__.py          # ← Required (can be empty)
+    └── my_package/
+        ├── __init__.py      # ← Required
+        └── cli/
+            └── main.py
+```
+
+**Build Config (pyproject.toml):**
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]  # ← Required for src-layout
+
+[project.scripts]
+my-cli = "my_package.cli.main:function"
+#        └─ import path ─┘ └function┘
+```
+
+**Avoid:**
+```python
+sys.path.insert(0, "src")  # ❌ Breaks after install
+```
+
+```toml
+[project.scripts]
+cli = "cli:main"  # ❌ Root scripts don't work after install
+```
+
+**Common Errors:**
+
+| Error | Fix |
+|-------|-----|
+| `Unable to determine files to ship` | Add `packages = ["src"]` to `[tool.hatch.build.targets.wheel]` |
+| `No module named 'my_package'` | Add `__init__.py` to `src/` and `src/my_package/` |
+| `command not found` | Check entry point uses `pkg.module:func` format, verify with `--help` |
