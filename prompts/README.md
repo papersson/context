@@ -77,6 +77,19 @@ Activity log and tracking prompts.
 ### [meta/](meta/)
 Meta-level prompts for working with prompts.
 
+### [architecture/](architecture/)
+Multi-repo exploration prompts that extract high-signal architectural overviews.
+- `data.md` - Data stores, flows, ownership, message queues
+- `service.md` - Service identity, communication patterns, deployment
+- `build.md` - Build systems, CI/CD pipelines, artifacts, deployment mechanisms
+- `code.md` - Code organization, ownership, conventions, internal dependencies
+- `observability.md` - Logging, metrics, tracing, alerting, dashboards
+
+**Architecture approach:**
+- Parallel exploration: one Task per repository
+- Per-repo reports synthesized into unified view
+- Output: structured markdown + Mermaid diagram
+
 ## Using Prompts
 
 ### One-Shot Usage
