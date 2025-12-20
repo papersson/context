@@ -26,10 +26,10 @@ Instructions define **who the LLM is** and **how it approaches problems**. They 
 **Ask: "Is this persistent session behavior or a discrete task?"**
 
 Examples:
-- ✓ "When searching, use this methodology" → instructions/search/
-- ✗ "Search for X and return results" → prompts/search/
-- ✓ "You are a helpful agent who prioritizes clarity" → instructions/agent/
-- ✗ "Rewrite this text for clarity" → prompts/writing-style/
+- "When searching, use this methodology" → instructions/
+- "Search for X and return results" → prompts/
+- "You are a helpful agent who prioritizes clarity" → instructions/agent/
+- "Rewrite this text for clarity" → prompts/
 
 ## Current Categories
 
@@ -39,11 +39,9 @@ Core agent behavior and personality.
 
 ### [chat/](chat/)
 Conversational interface behaviors.
-- To be documented as patterns emerge
 
-### [search/](search/)
-Search methodology and approach.
-- `search_knowledge_base.md` - How to search knowledge bases effectively
+### [specialized/](specialized/)
+Domain-specific behavioral instructions.
 
 ## Using Instructions
 
@@ -51,9 +49,8 @@ Search methodology and approach.
 Copy instruction files into your agent's system prompt at conversation start:
 
 ```bash
-# Example: Setting up an agent with core behavior and search methodology
+# Example: Setting up an agent with core behavior
 cat instructions/agent/core.md > system_prompt.txt
-cat instructions/search/search_knowledge_base.md >> system_prompt.txt
 ```
 
 ### For Chatbots
@@ -82,4 +79,3 @@ Instructions are composable. Combine multiple instruction files for specialized 
 
 - [Prompts](../prompts/) - Single-purpose transformations
 - [Concepts](../concepts/) - Universal reference knowledge
-- [Falck Knowledge Base](../falck-knowledge-base/) - Falck-specific operational knowledge

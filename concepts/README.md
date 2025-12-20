@@ -1,12 +1,12 @@
 # Concepts
 
-Universal reference knowledge that applies anywhere, not specific to Falck.
+Universal reference knowledge that applies anywhere.
 
 ## Purpose
 
 Concepts contain stable, canonical knowledge that is broadly applicable across organizations and contexts. This is reference material that helps LLMs understand domains, methods, or technical topics that may not be well-represented in their training data.
 
-## Concepts vs. Falck Knowledge Base
+## When to Use Concepts
 
 **Use Concepts for:**
 - Universal knowledge that applies at any company
@@ -14,23 +14,14 @@ Concepts contain stable, canonical knowledge that is broadly applicable across o
 - Domain concepts, technical methods, industry standards
 - Knowledge to fill gaps in LLM training
 
-**Use Falck Knowledge Base for:**
-- Falck-specific operational knowledge
-- Internal processes, systems, organizational structure
-- "How we do things at Falck"
-- See [falck-knowledge-base/](../falck-knowledge-base/) instead
-
 ## Decision Rule
 
 **Ask: "Would this knowledge be useful at another company?"**
 
 Examples:
-- ✓ "How contract classification generally works in legal tech" → concepts/domains/legal/
-- ✗ "How Falck classifies contracts in Ironclad" → falck-knowledge-base/domains/contracts/
-- ✓ "Context engineering principles for LLMs" → concepts/ai/
-- ✗ "How we use Claude at Falck" → falck-knowledge-base/systems/
-- ✓ "Software architecture patterns" → concepts/software/
-- ✗ "Falck's system architecture" → falck-knowledge-base/systems/
+- "How contract classification generally works in legal tech" → concepts/domains/legal/
+- "Context engineering principles for LLMs" → concepts/ai/
+- "Software architecture patterns" → concepts/software/
 
 ## Current Categories
 
@@ -40,12 +31,12 @@ AI, ML, and LLM concepts.
 
 ### [domains/](domains/)
 Domain-specific universal knowledge.
-- To be populated with cross-industry domain concepts
+- Cross-industry domain concepts
 - Examples: legal tech, healthcare operations, logistics
 
 ### [software/](software/)
 Software engineering concepts.
-- To be populated with patterns, architectures, methodologies
+- Patterns, architectures, methodologies
 - Examples: design patterns, testing strategies, architecture styles
 
 ## When to Add Concepts
@@ -64,7 +55,7 @@ Most domain knowledge is already in LLM training. Add concepts only when:
 
 ## Adding New Concepts
 
-1. Verify it's universal, not Falck-specific
+1. Verify it's universal, not organization-specific
 2. Verify it fills a gap in LLM knowledge
 3. Create file in appropriate category: `concepts/category/name.md`
 4. Focus on stable, reference-quality content
@@ -81,20 +72,10 @@ Add concepts to conversations when you need to establish shared understanding of
 cat concepts/ai/context_engineering_draft.md
 ```
 
-### With Falck Knowledge
-Combine universal concepts with Falck-specific knowledge:
-
-```bash
-# Universal + Specific
-cat concepts/domains/legal/contract-management.md
-cat falck-knowledge-base/domains/contracts/classification-process.md
-```
-
 ### For Onboarding
-Use concepts to educate LLMs (or people) on domains before diving into Falck-specific details.
+Use concepts to educate LLMs (or people) on domains before diving into specific details.
 
 ## Related Documentation
 
-- [Falck Knowledge Base](../falck-knowledge-base/) - Falck-specific operational knowledge
 - [Instructions](../instructions/) - Multi-turn behavioral context
 - [Prompts](../prompts/) - Single-purpose transformations

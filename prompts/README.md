@@ -26,12 +26,12 @@ Prompts define **what specific thing to do right now**. They are one-shot tasks 
 **Ask: "Is this a discrete transformation or persistent behavior?"**
 
 Examples:
-- ✓ "Clean this transcript" → prompts/meetings/
-- ✗ "When cleaning transcripts, always do X" → instructions/
-- ✓ "Summarize this meeting" → prompts/meetings/
-- ✗ "You are a meeting facilitator" → instructions/chat/
-- ✓ "Rewrite in direct prose style" → prompts/writing-style/
-- ✗ "Always write in direct prose" → instructions/writing-style/
+- "Clean this transcript" → prompts/meetings/
+- "When cleaning transcripts, always do X" → instructions/
+- "Summarize this meeting" → prompts/meetings/
+- "You are a meeting facilitator" → instructions/chat/
+- "Rewrite in direct prose style" → prompts/
+- "Always write in direct prose" → instructions/
 
 ## Current Categories
 
@@ -64,14 +64,18 @@ Meeting-related transformations.
 - `clean_teams_json_transcript.md` - Clean messy Teams JSON transcripts
 - `summarize_transcript.md` - Summarize meeting transcripts into key points
 
-### [writing-style/](writing-style/)
-Text style transformations.
-- `direct_prose.md` - Rewrite text in direct, clear prose
-- `conceptual_summary.md` - Create conceptual summaries
-
 ### [learning/](learning/)
 Knowledge extraction and synthesis.
 - `knowledge_map.md` - Extract and map key concepts from content
+
+### [synthesis/](synthesis/)
+Content synthesis transformations.
+
+### [activity/](activity/)
+Activity log and tracking prompts.
+
+### [meta/](meta/)
+Meta-level prompts for working with prompts.
 
 ## Using Prompts
 
@@ -127,11 +131,6 @@ Or:
 1. `clean_teams_json_transcript.md` → clean text
 2. `summarize_transcript.md` → key points and action items
 
-**Writing Refinement:**
-1. Draft rough text
-2. `direct_prose.md` → clear, direct version
-3. `conceptual_summary.md` → executive summary
-
 **Knowledge Synthesis:**
 1. Gather source material
 2. `knowledge_map.md` → structured concepts
@@ -161,4 +160,3 @@ Each prompt should:
 
 - [Instructions](../instructions/) - Multi-turn behavioral context
 - [Concepts](../concepts/) - Universal reference knowledge
-- [Falck Knowledge Base](../falck-knowledge-base/) - Falck-specific operational knowledge
