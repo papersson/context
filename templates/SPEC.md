@@ -2,30 +2,24 @@
 
 **Version:** [X.Y]  
 **Last Updated:** [YYYY-MM-DD]  
-**Author:** [Name]  
 **Status:** [Draft | Review | Approved]
 
 ---
 
 ## 1. PURPOSE
 
-[One paragraph maximum. What is this system/feature/task? What problem does it solve? Who or what consumes the output?]
+[One paragraph. What problem does this solve? What does success look like?]
 
 ---
 
 ## 2. SCOPE
 
 ### IN SCOPE
-
-- [What this specification covers]
-- [Specific capabilities included]
-- [Boundaries of responsibility]
+- [What this covers]
 
 ### OUT OF SCOPE
-
-- [What this explicitly does NOT cover]
-- [Adjacent concerns deliberately excluded]
-- [Future work not addressed here]
+- [What this explicitly excludes]
+- [Adjacent concerns that are someone else's problem]
 
 ---
 
@@ -33,260 +27,320 @@
 
 | Term | Definition |
 |------|------------|
-| [Term A] | [Precise, unambiguous definition. No circular references.] |
-| [Term B] | [Definition. If referencing another term, that term MUST be defined above.] |
+| [Term] | [Precise definition] |
 
 ---
 
-## 4. INPUTS
+## 4. DOMAIN TYPES
 
-### 4.1 Input Description
+Define the core data structures. Use types to make invalid states unrepresentable.
+Where possible, use refined/branded types to encode constraints at the type level.
 
-[What the system/agent receives. Overall structure and context.]
+```typescript
+// Example: Instead of `amount: number`, use a refined type
+type PositiveInt = number & { readonly brand: unique symbol };
 
-### 4.2 Input Schema
+// Example: Use discriminated unions to make states explicit
+type TaskState = 
+  | { status: "pending" }
+  | { status: "running"; startedAt: Date }
+  | { status: "completed"; result: Result }
+  | { status: "failed"; error: Error; retriesRemaining: number };
 
-| Field | Type | Required | Constraints | Description |
-|-------|------|----------|-------------|-------------|
-| [field_name] | [type] | [Yes/No] | [Valid values, ranges, patterns] | [What this field represents] |
+// Example: Make invalid states unrepresentable
+// A completed task MUST have a result. A failed task MUST have an error.
+// The type system enforces this; no runtime check needed.
+```
 
-### 4.3 Input Validation
+### 4.1 Core Types
 
-- **Valid input:** [What constitutes valid input]
-- **Invalid input:** [What constitutes invalid input]
-- **On invalid input:** [Exact behavior when input is invalid]
+```typescript
+// [Define the primary data structures here]
+// [Include type aliases, interfaces, discriminated unions]
+// [Use branded types for refinements: NonEmptyString, PositiveInt, ValidEmail, etc.]
+```
+
+### 4.2 Type Constraints
+
+| Type | Constraint | Enforcement |
+|------|------------|-------------|
+| [Type name] | [What makes it valid] | [Type-level or runtime validation at boundary] |
+
+### 4.3 State Machine (if applicable)
+
+If the system has states and transitions, define them explicitly:
+
+```
+[Initial] --> [State A] --> [State B] --> [Terminal]
+                  |              ^
+                  v              |
+              [State C] --------+
+```
+
+| From State | Event | To State | Side Effects |
+|------------|-------|----------|--------------|
+| [State A] | [Event X] | [State B] | [What happens] |
 
 ---
 
-## 5. OUTPUTS
+## 5. INPUTS
 
-### 5.1 Output Description
+### 5.1 Input Types
 
-[What the system/agent produces. Overall structure and purpose.]
+```typescript
+// [Define input types using the domain types above]
+interface Input {
+  // ...
+}
+```
 
-### 5.2 Output Schema
+### 5.2 Validation
 
-| Field | Type | Guaranteed | Description |
-|-------|------|------------|-------------|
-| [field_name] | [type] | [Always/Conditional] | [What this field represents] |
+| Field | Valid | Invalid | On Invalid |
+|-------|-------|---------|------------|
+| [field] | [What's accepted] | [What's rejected] | [Behavior: error, default, etc.] |
 
-### 5.3 Completeness Criteria
+**Validation boundary:** [Where validation occurs — at API boundary, before processing, etc.]
 
-[When is the output considered complete? What properties MUST the output have to be acceptable?]
+After validation, types guarantee validity. No defensive checks needed downstream.
 
 ---
 
-## 6. CONSTRAINTS
+## 6. OUTPUTS
 
-### 6.0 PRIORITY ORDER
+### 6.1 Output Types
 
-When constraints conflict, resolve in this order (highest priority first):
+```typescript
+// [Define output types]
+interface Output {
+  // ...
+}
+```
 
-1. **[Safety/Security]** — [Constraints in this class]
-2. **[Correctness]** — [Constraints in this class]
-3. **[Completeness]** — [Constraints in this class]
-4. **[Performance/Style]** — [Constraints in this class]
+### 6.2 Completeness
+
+[When is output considered complete? What properties must it have?]
 
 ---
 
-### 6.1 POSITIVE CONSTRAINTS (MUST)
+## 7. INVARIANTS
 
-#### [P1] [Short name]
+Properties that must hold across ALL states and operations. These are candidates for property-based tests.
 
-**Statement:** [The system/output MUST [precise requirement].]
+### 7.1 Conservation
 
-**Rationale:** [Why this constraint exists. What goes wrong without it.]
+[Things that are preserved across operations]
 
-**Verification:** [How to determine if this constraint is satisfied. Must be testable.]
+| Invariant | Statement | Example |
+|-----------|-----------|---------|
+| [INV-1] | [Total X before operation equals total X after] | [e.g., money in system is conserved across transfers] |
 
----
+### 7.2 Monotonicity
 
-#### [P2] [Short name]
+[Things that only move in one direction]
 
-**Statement:** [The system/output MUST [precise requirement].]
+| Invariant | Statement |
+|-----------|-----------|
+| [INV-2] | [X never decreases / Y never increases] |
 
-**Rationale:** [Why this constraint exists.]
+### 7.3 Structural
 
-**Verification:** [How to test.]
+[Relationships between data that must always hold]
 
----
+| Invariant | Statement |
+|-----------|-----------|
+| [INV-3] | [If A then B / A implies B] |
 
-### 6.2 NEGATIVE CONSTRAINTS (MUST NOT)
+### 7.4 Idempotence (if applicable)
 
-#### [N1] [Short name]
+[Operations that should produce the same result when applied multiple times]
 
-**Statement:** [The system/output MUST NOT [precise prohibition].]
-
-**Rationale:** [What failure mode this prevents. Why this is dangerous/wrong.]
-
-**Verification:** [How to determine if this constraint is violated.]
-
----
-
-#### [N2] [Short name]
-
-**Statement:** [The system/output MUST NOT [precise prohibition].]
-
-**Rationale:** [What failure mode this prevents.]
-
-**Verification:** [How to test for violation.]
+| Operation | Idempotent? | Notes |
+|-----------|-------------|-------|
+| [Operation X] | [Yes/No] | [f(f(x)) = f(x)?] |
 
 ---
 
-### 6.3 PREFERENCES (SHOULD / SHOULD NOT)
+## 8. CONSTRAINTS
 
-#### [S1] [Short name]
+### 8.0 PRIORITY ORDER
 
-**Statement:** [The system/output SHOULD (NOT) [preference].]
+When constraints conflict, resolve in this order (highest first):
 
-**Rationale:** [Why this is preferred.]
-
-**Override condition:** [Circumstances under which violating this preference is acceptable.]
-
----
-
-## 7. EDGE CASES
-
-| Case | Condition | Required Behavior |
-|------|-----------|-------------------|
-| Empty input | [When input is empty/null/zero-length] | [Exact behavior] |
-| Boundary value | [At limits of valid ranges] | [Exact behavior] |
-| Malformed input | [Input that is structurally invalid] | [Exact behavior] |
-| [Other edge case] | [Condition] | [Behavior] |
+1. **[Safety]** — [Which constraints]
+2. **[Correctness]** — [Which constraints]  
+3. **[Completeness]** — [Which constraints]
+4. **[Performance/Style]** — [Which constraints]
 
 ---
 
-## 8. EXAMPLES
+### 8.1 POSITIVE CONSTRAINTS (MUST)
 
-### 8.1 Valid Examples (meets spec)
+**[P1] [Name]**
+- Statement: [MUST ...]
+- Rationale: [Why]
+- Proven by: [Type / Test / Review]
 
-#### Example V1: [Name]
-
-**Input:**
-```
-[Concrete input]
-```
-
-**Output:**
-```
-[Concrete expected output]
-```
-
-**Why correct:** [Explanation of which constraints are satisfied and how]
+**[P2] [Name]**
+- Statement: [MUST ...]
+- Rationale: [Why]
+- Proven by: [Type / Test / Review]
 
 ---
 
-#### Example V2: [Name]
+### 8.2 NEGATIVE CONSTRAINTS (MUST NOT)
 
-**Input:**
-```
-[Concrete input]
-```
+**[N1] [Name]**
+- Statement: [MUST NOT ...]
+- Rationale: [What failure this prevents]
+- Verified by: [Type / Test / Review]
 
-**Output:**
-```
-[Concrete expected output]
-```
-
-**Why correct:** [Explanation]
+**[N2] [Name]**
+- Statement: [MUST NOT ...]
+- Rationale: [Why]
+- Verified by: [Type / Test / Review]
 
 ---
 
-### 8.2 Invalid Examples (violates spec)
+### 8.3 PREFERENCES (SHOULD)
 
-#### Example I1: [Name]
-
-**Input:**
-```
-[Concrete input]
-```
-
-**Incorrect output:**
-```
-[Output that would be WRONG]
-```
-
-**Violation:** FAILS **[N1]** — [Explanation of how this violates the constraint]
+**[S1] [Name]**
+- Statement: [SHOULD ...]
+- Override: [When acceptable to violate]
 
 ---
 
-#### Example I2: [Name]
+## 9. EDGE CASES
 
-**Input:**
-```
-[Concrete input]
-```
-
-**Incorrect output:**
-```
-[Output that would be WRONG]
-```
-
-**Violation:** FAILS **[P2]** — [Explanation of how this fails to satisfy the constraint]
+| Case | Condition | Behavior |
+|------|-----------|----------|
+| Empty input | [When] | [What happens] |
+| Boundary value | [At limits] | [What happens] |
+| Concurrent access | [If applicable] | [What happens] |
+| [Other] | [Condition] | [Behavior] |
 
 ---
 
-### 8.3 Edge Case Examples
+## 10. VERIFICATION STRATEGY
 
-#### Example E1: [Name]
+### 10.1 What Types Prove
 
-**Input:**
-```
-[Edge case input]
-```
+These properties are guaranteed at compile time. No tests needed.
 
-**Output:**
-```
-[Expected output for edge case]
-```
+| Property | Proven By |
+|----------|-----------|
+| [e.g., Amount is positive] | [PositiveInt type] |
+| [e.g., All states handled] | [Exhaustive pattern match on TaskState] |
+| [e.g., Completed tasks have results] | [Discriminated union structure] |
 
-**Why:** [Explanation of edge case handling]
+### 10.2 Unit Tests
+
+Specific input-output cases for core logic.
+
+| Test | Input | Expected Output | Constraint Verified |
+|------|-------|-----------------|---------------------|
+| [Test name] | [Input] | [Output] | [P1, P2, ...] |
+
+### 10.3 Property-Based Tests
+
+Invariants that should hold for all (or many random) inputs.
+
+| Property | Statement | Generator |
+|----------|-----------|-----------|
+| [Round-trip] | `parse(serialize(x)) === x` for all valid x | [Random valid objects] |
+| [Conservation] | Total before === total after | [Random operation sequences] |
+| [Idempotence] | `f(f(x)) === f(x)` | [Random inputs] |
+| [INV-1] | [From invariants section] | [Appropriate generator] |
+
+### 10.4 Integration Tests
+
+Cross-component behavior that can't be tested in isolation.
+
+| Test | Components | Scenario | Expected Outcome |
+|------|------------|----------|------------------|
+| [Name] | [A, B, C] | [Setup and action] | [What should happen] |
+
+### 10.5 What Requires Human Review
+
+Properties that can't be automatically verified.
+
+| Property | Review Criteria |
+|----------|-----------------|
+| [e.g., Code clarity] | [Can a reader understand the intent?] |
+| [e.g., Appropriate abstractions] | [Are the boundaries in the right places?] |
 
 ---
 
-## 9. ASSUMPTIONS
+## 11. EXAMPLES
 
-### 9.1 Environmental Assumptions
+### 11.1 Valid
 
-- [What this spec assumes about the execution environment]
-- [External dependencies assumed to be available]
-- [Preconditions assumed to be met]
+**[V1] [Name]**
+```
+Input: [concrete input]
+Output: [concrete output]
+```
+Why correct: [Which constraints satisfied, which invariants preserved]
 
-### 9.2 Input Assumptions
+**[V2] [Name]**
+```
+Input: [concrete input]  
+Output: [concrete output]
+```
+Why correct: [Explanation]
 
-- [What this spec assumes about the nature/quality of inputs]
-- [Guarantees expected from upstream systems]
+### 11.2 Invalid
 
-### 9.3 Assumption Violations
+**[I1] [Name]**
+```
+Input: [concrete input]
+Wrong output: [what would be wrong]
+```
+Violation: **[N1]** — [How this violates the constraint]
+
+**[I2] [Name]**
+```
+Input: [concrete input]
+Wrong output: [what would be wrong]
+```
+Violation: **[P2]** — [How this fails to satisfy the constraint]
+
+### 11.3 Edge Cases
+
+**[E1] [Name]**
+```
+Input: [edge case input]
+Output: [expected output]
+```
+Why: [Explanation of edge case handling]
+
+---
+
+## 12. ASSUMPTIONS
+
+### 12.1 Environmental
+- [What's assumed about execution environment]
+- [Dependencies assumed available]
+
+### 12.2 Input Quality
+- [What's assumed about input correctness beyond validation]
+
+### 12.3 If Assumptions Fail
 
 | Assumption | If Violated |
 |------------|-------------|
-| [Assumption A] | [What should happen if this assumption is false] |
-| [Assumption B] | [Behavior when assumption fails] |
+| [Assumption] | [Behavior] |
 
 ---
 
-## 10. OPEN QUESTIONS
+## 13. OPEN QUESTIONS
 
-> [If any ambiguities remain unresolved, list them here for human decision. Remove this section if all questions are resolved.]
-
-- [ ] [Question 1: Description of ambiguity and options]
-- [ ] [Question 2: Description of ambiguity and options]
+- [ ] [Unresolved ambiguity needing human decision]
 
 ---
 
 ## CHANGELOG
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| [X.Y] | [YYYY-MM-DD] | [Name] | [Description of changes] |
-
----
-
-## APPENDIX A: Extended Examples (Optional)
-
-[Additional examples for complex cases, if needed]
-
-## APPENDIX B: Related Specifications (Optional)
-
-[References to other specs this depends on or relates to]
+| Version | Date | Changes |
+|---------|------|---------|
+| [X.Y] | [Date] | [What changed] |
