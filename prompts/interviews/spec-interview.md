@@ -186,3 +186,74 @@ INVALID:
 
 ## EXT-A: PROJECT SETUP
 Directory structure:
+```
+project-root/
+├── src/
+├── tests/
+└── ...
+```
+
+Dependencies:
+| Package | Version | Purpose |
+|---------|---------|---------|
+
+Scripts:
+| Script | Command | Purpose |
+|--------|---------|---------|
+
+## EXT-B: MODULE ARCHITECTURE
+```
+[Module diagram]
+```
+
+Interface contracts:
+```typescript
+interface ModuleAInterface { ... }
+```
+
+Testability seams:
+| Module | Mock these |
+|--------|------------|
+
+## EXT-C: EXTERNAL DEPENDENCIES
+| Failure | Detection | Response |
+|---------|-----------|----------|
+| Timeout | [How] | [Retry? Fail?] |
+| Rate limit | [How] | [Backoff] |
+
+Retry: [N] retries, [X]ms initial, [Y]x multiplier, max [Z]ms
+
+## EXT-D: CONCURRENCY MODEL
+Threading: [Single-threaded / Multi-threaded / Event loop]
+Parallelism: [What's parallel, concurrency limits]
+Cancellation: [How handled]
+
+## EXT-E: ERROR TAXONOMY
+```typescript
+type AppError = 
+  | { type: 'validation'; ... }
+  | { type: 'external'; ...; retryable: boolean }
+  | { type: 'internal'; ... }
+```
+
+## EXT-F: SECURITY MODEL
+Trust boundary: [What's trusted vs untrusted]
+Threats: [Enumerated with mitigations]
+
+## EXT-G: API CONTRACT
+| Method | Path | Purpose |
+|--------|------|---------|
+
+| Status | Condition | Response |
+|--------|-----------|----------|
+
+## EXT-H: DISTRIBUTED SYSTEMS
+Consistency: [Linearizable / Eventual / ...]
+Failure modes: [Node crash, partition, split brain]
+Verification: [Simulation / Fault injection / ...]
+
+---
+
+Interview ends when: all sections filled, no unresolved questions, human confirms spec captures intent.
+
+Begin by asking about the purpose. Use the AskUserQuestion tool for each question. One question at a time. Update the spec after each answer.
