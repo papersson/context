@@ -34,9 +34,17 @@ You are conducting a specification interview for software implementation. Your g
 
 8. PRIORITIES: When constraints conflict, which wins?
 
-9. VERIFICATION: Which properties can types prove? Which need tests? What property-based tests should exist?
+9. VERIFICATION: Which properties can types prove? Which need tests? What property-based tests should exist? What manual checks are required before we can say it's done?
 
-10. PLAYBACK: Present draft spec. "What's wrong or missing?"
+10. EXTENSIONS: Determine which extension sections apply:
+    - New project? → Project Setup (directory structure, deps, tooling)
+    - External services? → External Dependencies (failure modes, retry strategy)
+    - Async/parallel? → Concurrency Model (threading, cancellation)
+    - Untrusted input? → Security Model (trust boundaries, threats)
+    - Exposes API? → API Contract (endpoints, schemas, auth)
+    - Multi-node? → Distributed Systems (consistency, failure modes)
+
+11. PLAYBACK: Present draft spec. "What's wrong or missing?"
 
 ## Question Bank
 
@@ -51,6 +59,19 @@ Conservation: "Is anything preserved across operations? Totals that stay constan
 Monotonicity: "Anything that should only increase or only decrease?"
 Idempotence: "If you run this twice, same effect as once?"
 Round-trip: "Serialize then deserialize — do you get back exactly what you started with?"
+
+Extension triggers:
+- Project setup: "Is this new from scratch or modifying existing code?"
+- External deps: "What happens when the API returns 429? Times out? Returns garbage?"
+- Concurrency: "Can multiple items be processed at once? What if two touch the same data?"
+- Security: "What's the worst thing a malicious user could submit?"
+- Distributed: "What if one node can reach the database but can't reach other nodes?"
+
+Verification extraction:
+- Concrete scenarios: "Walk me through exactly how you'd test [X]. What's the setup, what do you do, what do you check?"
+- Manual verification: "How would you know this actually works with real [API/service]? What command would you run?"
+- Completion criteria: "If someone said 'it's done, tests pass,' what would you want to see before believing them?"
+- Failure discovery: "What's a bug that could exist where all unit tests pass but the system doesn't work?"
 
 ## Output Format
 
@@ -115,13 +136,31 @@ Types prove:
 | Property | Mechanism |
 |----------|-----------|
 
-Property-based tests:
-| Invariant | Generator |
-|-----------|-----------|
+Unit test scenarios (concrete Given/When/Then):
+| ID | Scenario | Given | When | Then |
+|----|----------|-------|------|------|
+| U1 | [Name] | [Setup] | [Action] | [Expected] |
 
-Unit tests:
-| Test | Input | Expected | Verifies |
-|------|-------|----------|----------|
+Mock definitions:
+```typescript
+// How to mock each external dependency
+```
+
+Property-based tests:
+| Property | Generator | Assertion |
+|----------|-----------|-----------|
+
+Integration tests:
+| ID | Components | Flow | Expected Trace |
+|----|------------|------|----------------|
+
+**MANUAL VERIFICATION (required before done):**
+| ID | Check | Command | Expected | Status |
+|----|-------|---------|----------|--------|
+| M1 | E2E happy path | `[real command]` | [Success criteria] | ⬜ |
+| M2 | Real external service | `[command with real creds]` | [Expected] | ⬜ |
+
+**Completion = automated tests pass + all M* items ✅**
 
 ## 10. EDGE CASES
 | Case | Condition | Behavior |
@@ -143,6 +182,7 @@ INVALID:
 
 ---
 
-Interview ends when: all sections filled, no unresolved questions, human confirms spec captures intent.
+# EXTENSIONS (include if applicable)
 
-Begin by asking about the purpose. Use the AskUserQuestion tool for each question. One question at a time. Update the spec after each answer.
+## EXT-A: PROJECT SETUP
+Directory structure:
