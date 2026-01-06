@@ -22,6 +22,12 @@ I want to automate business workflows so an agent performs them autonomously, at
 | 3 | Trained | Open | Behavior in weights |
 | 4 | RL-enhanced | Open | Model explores beyond demos |
 
+| Training Method | Full Name | Signal |
+|-----------------|-----------|--------|
+| SFT | Supervised Fine-Tuning | Demonstrations |
+| RL | Reinforcement Learning | Rewards |
+| RLHF | RL from Human Feedback | Human preferences |
+
 Note: Trace collection requires instrumenting the agent. Commercial tools (Claude Code) may limit this; custom implementations give full control.
 
 ---
