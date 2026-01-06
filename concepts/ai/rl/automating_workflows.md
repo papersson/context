@@ -40,7 +40,9 @@ Three methods for Stage 3, each with different trade-offs.
 
 **Supervised fine-tuning (SFT)** learns from demonstrations. I show the model good outputs and it learns to produce similar ones. The model optimizes similarity to training data. It can only generalize from what it saw; it doesn't explore.
 
-**Reinforcement learning (RL)** learns from rewards. The model generates outputs, receives reward signals, and updates to maximize expected reward. It explores through sampling. Whether RL exceeds human performance depends on the reward signal. If reward means "human approves," I'm bounded by human judgment. If reward means "tests pass," the model can find valid solutions I wouldn't have thought of.
+**Reinforcement learning (RL)** learns from rewards. The model generates outputs, receives reward signals, and updates to maximize expected reward. It explores through sampling. Whether RL exceeds human performance depends on the reward signal. If reward means "tests pass," the model can find valid solutions I wouldn't have thought of.
+
+If reward means "human approves," the situation is more nuanced. RLHF can produce outputs better than any individual demonstration: novel strategies that humans approve but didn't demonstrate. But it cannot produce something objectively better that humans would reject. The approval function is the ceiling. I can exceed my demos; I cannot exceed my taste.
 
 **On-policy distillation** is a third option I didn't initially consider. The student generates a response, I compute KL divergence to what a teacher model would produce, and update the student to minimize the gap. No reward function needed. The only supervision is "be more like the teacher."
 
@@ -104,7 +106,15 @@ Self-play applies when the task can be framed as a game with clear win/loss, whe
 
 ### My Current Approach
 
-I don't have this solved. The approach will likely be: proxy metrics as baseline, LLM-judge with rubrics for style and quality, human review on a sample for calibration, pairwise comparison where I can't articulate criteria.
+I don't have this solved, but three strategies seem to compose well for my situation (verifiable correctness plus tacit quality judgment).
+
+First, decompose rewards. Use RL on verifiable metrics: tests pass, builds succeed, type-checks clean. Keep human judgment for taste and quality. Don't try to automate what I can't evaluate.
+
+Second, expand coverage. RL explores the solution space I wouldn't manually search. The value is finding valid solutions I wouldn't have thought of, even if I still judge quality. The model can exceed my demos on correctness while I remain the arbiter of taste.
+
+Third, refine judgment over time. Exposure to agent outputs may improve my own taste, gradually raising the ceiling. But this is risky. Approval drift can go toward better taste or toward accepting what the model easily produces. I need to monitor for the difference.
+
+In practice: proxy metrics as baseline, LLM-judge with rubrics for style, human review on a sample for calibration, pairwise comparison where I can't articulate criteria.
 
 ---
 
@@ -181,6 +191,40 @@ def run_with_trace(task: str, system_prompt: str) -> Trace:
         messages.append({"role": "user", "content": tool_results})
 ```
 
+A saved trace looks like this:
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "task": "Fix the bug in auth.py where login fails for emails with + symbols",
+  "system_prompt": "You are an expert Python developer...",
+  "steps": [
+    {
+      "tool": "read_file",
+      "args": {"path": "auth.py"},
+      "result": "def login(email, password):\n    ...",
+      "timestamp": "2025-01-06T10:30:00"
+    },
+    {
+      "tool": "write_file",
+      "args": {"path": "auth.py", "content": "...fixed code..."},
+      "result": "ok",
+      "timestamp": "2025-01-06T10:30:05"
+    },
+    {
+      "tool": "bash",
+      "args": {"command": "pytest test_auth.py"},
+      "result": "...... 6 passed",
+      "timestamp": "2025-01-06T10:30:10"
+    }
+  ],
+  "final_response": "Fixed the bug by URL-encoding the email before validation.",
+  "score": null
+}
+```
+
+The score starts null. I fill it in after reviewing the output, or leave it for batch evaluation later.
+
 ### Converting Traces to Training Data
 
 For SFT, filter to successful traces and convert to chat format. Each tool call becomes an assistant message with tool_calls, followed by a tool message with the result. The final response becomes the last assistant message.
@@ -215,7 +259,7 @@ What I haven't figured out yet.
 
 **Evaluation design.** How do I approximate quality automatically? What's the right mix of proxy metrics, LLM-judge, and human review? Partial answer: decompose into verifiable versus judgment, use pairwise comparison for tacit parts.
 
-**The end state.** Do I want the human out of the loop entirely? Or is "agent plus human verifier" good enough? Partial answer: probably the latter. My approval function is the ceiling regardless.
+**The end state.** Three possibilities: (1) Autonomous with spot-checks, where the agent runs without intervention and I review a sample for quality assurance. (2) Autonomous with guardrails, where the agent escalates when uncertain and quality is maintained because it knows what it doesn't know. (3) Continuously improving, where I provide occasional feedback and the model gets updated periodically. I haven't decided which I want. Probably some version of the first or second. My approval function is the ceiling regardless.
 
 **When RL is worth it.** SFT on good traces might be enough. RL is more complex and needs reward engineering. When does the added complexity pay off? Partial answer: when I have verifiable rewards that let the model explore beyond my demos.
 
