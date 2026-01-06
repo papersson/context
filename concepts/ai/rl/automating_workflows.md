@@ -104,18 +104,6 @@ In self-play tic-tac-toe, the agent plays against itself. A coordinator synchron
 
 Self-play applies when the task can be framed as a game with clear win/loss, when I can simulate the opponent, and when game outcome correlates with the quality I care about.
 
-### My Current Approach
-
-I don't have this solved, but three strategies seem to compose well for my situation (verifiable correctness plus tacit quality judgment).
-
-First, decompose rewards. Use RL on verifiable metrics: tests pass, builds succeed, type-checks clean. Keep human judgment for taste and quality. Don't try to automate what I can't evaluate.
-
-Second, expand coverage. RL explores the solution space I wouldn't manually search. The value is finding valid solutions I wouldn't have thought of, even if I still judge quality. The model can exceed my demos on correctness while I remain the arbiter of taste.
-
-Third, refine judgment over time. Exposure to agent outputs may improve my own taste, gradually raising the ceiling. But this is risky. Approval drift can go toward better taste or toward accepting what the model easily produces. I need to monitor for the difference.
-
-In practice: proxy metrics as baseline, LLM-judge with rubrics for style, human review on a sample for calibration, pairwise comparison where I can't articulate criteria.
-
 ---
 
 ## Getting Started: Trace Collection
@@ -250,6 +238,42 @@ Preference learning works. RLHF improves win rate from 40% to 70% in 100 steps. 
 Distillation is efficient. SFT on reasoning data reaches 55% on AIME'24 in 3000 steps. On-policy distillation reaches 65% in just 100 steps.
 
 Key patterns: simple verifiable tasks converge in 10-20 steps, complex reasoning takes 100-200+ steps, multi-turn behaviors emerge in 10-25 steps, preference learning shows clear improvement in 40-100 steps, on-policy distillation is dramatically more efficient than SFT.
+
+---
+
+## Methodology (WIP)
+
+This section captures my developing approach. Unlike the concepts above (which are stable reference material), this is work in progress.
+
+### Documenting the Workflow
+
+Workflow documentation serves as the prompt for Stage 1 and 2. The documentation IS the instructions for the agent. You can't skip it when using an API agent.
+
+How much to document depends on the workflow structure:
+
+For **deterministic parts** (create branch, run tests, submit PR), document the steps explicitly. These become verifiable checkpoints. Did the branch get created? Did tests pass? Did the PR get submitted? The documentation defines what to verify.
+
+For **fluid parts** (implement the feature, fix the bug), document **invariants** rather than sequences. "Implementation must pass existing tests" rather than "first read file X, then modify function Y." Over-specifying fluid parts constrains what the agent (or a trained model) can learn.
+
+The minimum viable documentation: what triggers the workflow (input), what counts as success (output), and which parts are verifiable versus require judgment.
+
+### Decomposing Rewards
+
+Three strategies seem to compose well for workflows that mix verifiable correctness with tacit quality judgment.
+
+First, decompose rewards. Use RL on verifiable metrics: tests pass, builds succeed, type-checks clean. Keep human judgment for taste and quality. Don't try to automate what I can't evaluate.
+
+Second, expand coverage. RL explores the solution space I wouldn't manually search. The value is finding valid solutions I wouldn't have thought of, even if I still judge quality. The model can exceed my demos on correctness while I remain the arbiter of taste.
+
+Third, refine judgment over time. Exposure to agent outputs may improve my own taste, gradually raising the ceiling. But this is risky. Approval drift can go toward better taste or toward accepting what the model easily produces. I need to monitor for the difference.
+
+In practice: proxy metrics as baseline, LLM-judge with rubrics for style, human review on a sample for calibration, pairwise comparison where I can't articulate criteria.
+
+### The Stage 1 to Stage 2 Gap
+
+The gap between "have workflow documentation" and "agent handles most cases autonomously" is prompt completeness. Stage 2 isn't just "better prompts" in the abstract. It's closing the gap between "tickets the agent can implement" and "all tickets."
+
+This happens through iteration: run the workflow, observe failures, improve prompts, repeat. The failures reveal what's missing from the documentation. Each fix extends the agent's capability.
 
 ---
 
