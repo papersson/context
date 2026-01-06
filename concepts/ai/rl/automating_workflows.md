@@ -275,6 +275,53 @@ The gap between "have workflow documentation" and "agent handles most cases auto
 
 This happens through iteration: run the workflow, observe failures, improve prompts, repeat. The failures reveal what's missing from the documentation. Each fix extends the agent's capability.
 
+Common failure modes in fluid parts:
+- Misunderstanding intent (specs are usually not comprehensive)
+- Insufficient pattern matching (not recognizing which similar examples apply)
+- Overfitting to patterns (applying a template when the situation doesn't fit)
+
+These failures are diagnostic. Misunderstanding intent suggests the spec or context-gathering needs work. Insufficient pattern matching suggests adding more reference examples. Overfitting suggests teaching when to deviate from patterns.
+
+### What Training Can and Can't Fix
+
+Training improves model behavior. It cannot fix input quality.
+
+Pattern matching and overfitting are model behavior. Training on good traces can improve both: the model learns better patterns and learns when to deviate.
+
+Intent misunderstanding often stems from bad inputs (vague specs, missing context). Training can't fix this. If the spec is ambiguous, a trained model will misunderstand it just like an untrained one. The ceiling is input quality, not model capability.
+
+This distinction matters for expectations. Don't expect training to solve problems that require better inputs.
+
+### Concrete Example: Ticket to PR Workflow
+
+Applying the framework to a specific workflow: implementing tickets and submitting PRs.
+
+**Workflow structure:**
+- Deterministic: read ticket, create branch, create file scaffold, run tests, compile, create PR, close ticket
+- Fluid: implement the code, verify implementation works
+
+**Documentation approach:**
+- Deterministic parts: document steps explicitly (these are verifiable checkpoints)
+- Fluid parts: document invariants ("implementation must pass tests") and point to examples ("pattern match similar implementations, read code standards, read taxonomy")
+
+**Current state (Stage 1):**
+- Have documentation foundation for deterministic parts
+- Missing documentation for difficult implementation cases
+- Human heavily in the loop for course correction
+
+**Next steps:**
+- Collect traces of all executions (successful and failed)
+- Iterate on prompts for failed cases (close the Stage 1→2 gap)
+- Score traces for later training use
+
+**Reward decomposition (for eventual Stage 4):**
+- Verifiable: branch created, tests pass, PR submitted, ticket closed
+- Judgment: implementation quality, code style, solution elegance
+
+**Training ceiling:**
+- Can improve: pattern matching, knowing when to deviate from templates
+- Cannot improve: understanding ambiguous specs (input quality issue)
+
 ---
 
 ## Open Questions
