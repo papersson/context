@@ -1,8 +1,27 @@
 # Automating Business Workflows with Trainable Agents
 
-I want to automate business workflows so an agent performs them autonomously, at human-level quality or better. This document is my attempt to understand how to get there.
+I want to automate business workflows so an agent performs them autonomously, at human-level quality or better.
 
-An agent is a system, not a model. It's an LLM plus prompts plus tools plus orchestration. The LLM reasons. Prompts encode domain knowledge. Tools provide capabilities (file access, code execution, search). Orchestration ties it together. When I improve an agent, I can change any of these components. The question is which ones I can change.
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| **Agent** | The system: LLM + prompts + tools + orchestration |
+| **Harness** | The agent program (Claude Code, Aider, custom). Matters for trace collection |
+| **Trace** | Captured execution: task, tool calls, results, output, score |
+
+| LLM Weight Access | Description | Examples |
+|-------------------|-------------|----------|
+| Closed-weights | No training possible | Claude, GPT-4 |
+| Vendor-tunable | Fine-tune via vendor API | OpenAI fine-tuning |
+| Open-weights | Full training control | Llama, Mistral, Qwen |
+
+| Stage | Name | LLM | Who drives |
+|-------|------|-----|------------|
+| 1 | Human-guided | Closed | Human in loop |
+| 2 | Prompt-automated | Closed | Prompts handle most cases |
+| 3 | Trained | Open | Behavior in weights |
+| 4 | RL-enhanced | Open | Model explores beyond demos |
 
 ---
 
@@ -12,7 +31,7 @@ If I use Claude via API, the model is frozen. I can improve prompts, add tools, 
 
 If I own a model (Llama, Mistral, Qwen), I can update its weights. Knowledge can move from prompts into the model. Behavior changes come from the model itself getting better at the task.
 
-This is the trainable core distinction. An API agent has a frozen core. An owned agent has a trainable core.
+This is the trainable core distinction. A closed-weights agent has a frozen core. An open-weights agent has a trainable core.
 
 Prompt optimization is powerful. Better prompts can add domain knowledge, structure complex tasks, provide examples that guide behavior, handle edge cases. But prompts have limits. Context windows bound how much knowledge fits. Instructions are interpreted, not internalized. The model's base capabilities don't improve. Each session starts from scratch.
 
@@ -26,13 +45,13 @@ For some workflows, the prompt ceiling is high enough. For others, it's not.
 
 The progression from assisted workflow to autonomous agent has four stages.
 
-**Stage 1: Human + API Agent.** This is where I am now. Claude Code with my prompts and tools. Human in the loop for course correction, quality gates, ambiguity resolution, recovery. The agent does work; the human ensures quality.
+**Stage 1: Human-guided.** This is where I am now. Closed-weights LLM (Claude) in a harness (Claude Code) with my prompts and tools. Human in the loop for course correction, quality gates, ambiguity resolution, recovery. The agent does work; the human ensures quality.
 
-**Stage 2: Prompt-Optimized API Agent.** Same architecture, better prompts. I run the workflow repeatedly, observe failures, improve prompts. I collect traces of successful executions. Over time, the agent handles more cases autonomously. The human intervenes less often. This is the ceiling of API-based agents. Still requires human oversight because the core hasn't learned.
+**Stage 2: Prompt-automated.** Same architecture, better prompts. I run the workflow repeatedly, observe failures, improve prompts. I collect traces of successful executions. Over time, the agent handles more cases autonomously. The human intervenes less often. This is the ceiling of closed-weights agents. Still requires human oversight because the core hasn't learned.
 
-**Stage 3: Training an Owned Model.** I take successful traces from Stage 2 and use them to train an owned model. The model learns to produce similar outputs given similar inputs. Knowledge moves from prompts into weights. The model doesn't need detailed prompts anymore. Runs faster (less context). Works offline. I control the deployment.
+**Stage 3: Trained.** I take successful traces from Stage 2 and use them to train an open-weights model. The model learns to produce similar outputs given similar inputs. Knowledge moves from prompts into weights. The model doesn't need detailed prompts anymore. Runs faster (less context). Works offline. I control the deployment.
 
-**Stage 4: RL on Owned Model.** I run the trained model in the environment and provide reward signals. The model explores beyond the demonstrations. It may discover strategies I didn't demonstrate. Whether this stage adds value depends on whether I have a reward signal that can guide the model beyond what I showed it.
+**Stage 4: RL-enhanced.** I run the trained model in the environment and provide reward signals. The model explores beyond the demonstrations. It may discover strategies I didn't demonstrate. Whether this stage adds value depends on whether I have a reward signal that can guide the model beyond what I showed it.
 
 ### Training Methods
 
@@ -247,7 +266,7 @@ This section captures my developing approach. Unlike the concepts above (which a
 
 ### Documenting the Workflow
 
-Workflow documentation serves as the prompt for Stage 1 and 2. The documentation IS the instructions for the agent. You can't skip it when using an API agent.
+Workflow documentation serves as the prompt for Stage 1 and 2. The documentation IS the instructions for the agent. You can't skip it when using a closed-weights LLM.
 
 How much to document depends on the workflow structure:
 
