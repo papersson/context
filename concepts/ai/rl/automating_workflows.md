@@ -1,105 +1,64 @@
 # Automating Business Workflows with Trainable Agents
 
-The goal: automate a business workflow so an agent performs it autonomously, at human-level quality or better.
+I want to automate business workflows so an agent performs them autonomously, at human-level quality or better. This document is my attempt to understand how to get there.
+
+An agent is a system, not a model. It's an LLM plus prompts plus tools plus orchestration. The LLM reasons. Prompts encode domain knowledge. Tools provide capabilities (file access, code execution, search). Orchestration ties it together. When I improve an agent, I can change any of these components. The question is which ones I can change.
 
 ---
 
-## What Is an Agent?
+## Frozen vs Trainable Core
 
-An agent is a system, not a model:
+If I use Claude via API, the model is frozen. I can improve prompts, add tools, refine orchestration. I cannot update the model's weights. Knowledge stays in the prompts. Behavior changes come from better instructions, not better understanding.
 
-```
-Agent = LLM + Prompts + Tools + Orchestration
-```
-
-The LLM provides reasoning. Prompts encode domain knowledge and instructions. Tools give the agent capabilities (file access, code execution, search). Orchestration ties it together (loops, error handling, state management).
-
-When you improve an agent, you can change any of these components. Most of my current leverage is in prompts and tools. The LLM itself is either frozen (API) or trainable (owned weights).
-
----
-
-## Frozen Core vs. Trainable Core
-
-If I use Claude via API, the model is frozen. I can:
-- Improve prompts (instructions, examples, structure)
-- Add/refine tools (capabilities, error messages)
-- Improve orchestration (retries, validation, checkpoints)
-
-I cannot update the model's weights. Knowledge stays in the prompts. Behavior changes come from better instructions, not better understanding.
-
-If I own a model (Llama, Mistral, Qwen, etc.), I can update its weights. Knowledge can move from prompts into the model. Behavior changes come from the model itself getting better at the task.
+If I own a model (Llama, Mistral, Qwen), I can update its weights. Knowledge can move from prompts into the model. Behavior changes come from the model itself getting better at the task.
 
 This is the trainable core distinction. An API agent has a frozen core. An owned agent has a trainable core.
 
----
+Prompt optimization is powerful. Better prompts can add domain knowledge, structure complex tasks, provide examples that guide behavior, handle edge cases. But prompts have limits. Context windows bound how much knowledge fits. Instructions are interpreted, not internalized. The model's base capabilities don't improve. Each session starts from scratch.
 
-## The Ceiling of Prompt Optimization
+The deeper issue: prompts change behavior within fixed capability. Training can change capability itself. A model trained on examples may discover statistical patterns that in-context examples don't enable. The training process finds structure that explicit instructions can't articulate.
 
-Prompt optimization is powerful. Better prompts can:
-- Add domain knowledge the model lacks
-- Structure complex tasks into manageable steps
-- Provide examples that guide behavior
-- Handle edge cases and error recovery
-
-But prompt optimization has limits:
-- Context window bounds how much knowledge fits
-- Instructions are interpreted, not internalized
-- The model's base capabilities don't improve
-- Each session starts from scratch (no persistent learning)
-
-Prompt optimization improves instructions to a fixed reasoner. It doesn't make the reasoner better.
-
-For some workflows, this ceiling is high enough. For others, it's not.
+For some workflows, the prompt ceiling is high enough. For others, it's not.
 
 ---
 
 ## The Path
 
-The progression from assisted workflow to autonomous agent:
+The progression from assisted workflow to autonomous agent has four stages.
 
-**Stage 1: Human + API Agent**
+**Stage 1: Human + API Agent.** This is where I am now. Claude Code with my prompts and tools. Human in the loop for course correction, quality gates, ambiguity resolution, recovery. The agent does work; the human ensures quality.
 
-Today's state. Claude Code (or similar) with my prompts and tools. Human in the loop for course correction, quality gates, ambiguity resolution, and recovery. The agent does work; the human ensures quality.
+**Stage 2: Prompt-Optimized API Agent.** Same architecture, better prompts. I run the workflow repeatedly, observe failures, improve prompts. I collect traces of successful executions. Over time, the agent handles more cases autonomously. The human intervenes less often. This is the ceiling of API-based agents. Still requires human oversight because the core hasn't learned.
 
-**Stage 2: Prompt-Optimized API Agent**
+**Stage 3: Training an Owned Model.** I take successful traces from Stage 2 and use them to train an owned model. The model learns to produce similar outputs given similar inputs. Knowledge moves from prompts into weights. The model doesn't need detailed prompts anymore. Runs faster (less context). Works offline. I control the deployment.
 
-Same architecture, better prompts. I run the workflow repeatedly, observe failures, and improve prompts. I collect traces of successful executions. Over time, the agent handles more cases autonomously. The human intervenes less often.
+**Stage 4: RL on Owned Model.** I run the trained model in the environment and provide reward signals. The model explores beyond the demonstrations. It may discover strategies I didn't demonstrate. Whether this stage adds value depends on whether I have a reward signal that can guide the model beyond what I showed it.
 
-This is the ceiling of API-based agents. Still requires human oversight because the core hasn't learned—only the instructions improved.
+### Training Methods
 
-**Stage 3: SFT on Owned Model**
+Three methods for Stage 3, each with different trade-offs.
 
-I take the successful traces from Stage 2 and use them to train an owned model. The model learns to produce similar outputs given similar inputs. Knowledge moves from prompts into weights.
+**Supervised fine-tuning (SFT)** learns from demonstrations. I show the model good outputs and it learns to produce similar ones. The model optimizes similarity to training data. It can only generalize from what it saw; it doesn't explore.
 
-The model doesn't need the detailed prompts anymore—behavior is baked in. Runs faster (less context). Works offline. I control the deployment.
+**Reinforcement learning (RL)** learns from rewards. The model generates outputs, receives reward signals, and updates to maximize expected reward. It explores through sampling. Whether RL exceeds human performance depends on the reward signal. If reward means "human approves," I'm bounded by human judgment. If reward means "tests pass," the model can find valid solutions I wouldn't have thought of.
 
-**Stage 4: RL on Owned Model (Optional)**
+**On-policy distillation** is a third option I didn't initially consider. The student generates a response, I compute KL divergence to what a teacher model would produce, and update the student to minimize the gap. No reward function needed. The only supervision is "be more like the teacher."
 
-I run the SFT model in the environment and provide reward signals. The model explores beyond the demonstrations. It may discover strategies I didn't demonstrate.
+On-policy distillation dramatically outperforms SFT in practice. On AIME'24 math problems, SFT on reasoning data reaches 55% accuracy after 3000 training steps. On-policy distillation reaches 65% accuracy after just 100 steps. The key difference: SFT trains on a fixed dataset. On-policy distillation trains on what the student actually produces, correcting it toward the teacher. The student learns from its own distribution.
 
-Whether this stage adds value depends on whether I have a reward signal that can guide the model beyond what I showed it.
+### Prompt Distillation
 
----
+A specific technique worth understanding: prompt distillation (also called context distillation). The goal is to make a model behave as if it has a complex prompt, without providing the prompt.
 
-## On SFT vs. RL
+The process: a teacher generates with the full prompt, a student learns to produce the same output without the prompt. After training, the student behaves as if the prompt is baked into its weights.
 
-A common framing: SFT imitates humans, RL exceeds them.
+My CLAUDE.md files, system prompts, and tool instructions are all prompts. Prompt distillation can internalize these into an owned model. Run workflows with full prompts (teacher), collect query-response pairs, train student to produce responses given only queries. The student now "knows" the prompt implicitly.
 
-This is an oversimplification. The real distinction:
+This is a concrete implementation of "knowledge moves from prompts to weights."
 
-| Aspect | SFT | RL |
-|--------|-----|-----|
-| Learning signal | Demonstrations (static dataset) | Rewards (interactive feedback) |
-| What's optimized | Similarity to training outputs | Expected cumulative reward |
-| Exploration | None (only sees what's in data) | Active (entropy bonus, sampling) |
-| Can find novel strategies? | Limited (generalization only) | Yes (reward guides search) |
+### When to Use What
 
-SFT learns "when I see X, produce Y" from examples. RL learns "maximize this signal" through trial and error.
-
-But whether RL exceeds human performance depends on the reward signal:
-- If reward = "human approves this" → bounded by human judgment
-- If reward = "tests pass" → can exceed human if model finds valid solutions humans didn't
-- If reward = composite (tests + style + efficiency) → can optimize trade-offs humans wouldn't
+SFT when I have good demonstrations and want a simple, predictable training process. On-policy distillation when I have a teacher model and want faster convergence without designing rewards. RL when I have verifiable reward signals (tests pass, metrics improve) and want the model to explore beyond my demonstrations.
 
 The question isn't "SFT or RL?" It's "what signal can I give, and what does optimizing it buy me?"
 
@@ -107,107 +66,63 @@ The question isn't "SFT or RL?" It's "what signal can I give, and what does opti
 
 ## The Evaluation Problem
 
-My workflows have no clear automated success signal. Quality requires human judgment.
+My workflows have no clear automated success signal. Quality requires human judgment. This creates tension. Prompt optimization needs a score to compare variants. SFT needs labeled examples. RL needs a reward signal for every rollout.
 
-This creates a tension:
-- Prompt optimization needs a score to compare variants
-- SFT needs labeled examples (which I provide by doing the work)
-- RL needs a reward signal for every rollout
+Several options exist, none perfect.
 
-Options:
+Human-in-the-loop evaluation is accurate but doesn't scale. I review outputs and provide scores. Works for prompt optimization and SFT data collection. For RL, this means RLHF (reinforcement learning from human feedback).
 
-**Human-in-the-loop evaluation.** I review outputs and provide scores. Accurate but doesn't scale. Works for prompt optimization and SFT data collection. For RL, means RLHF (reinforcement learning from human feedback).
+LLM-as-judge scales better. Another model evaluates outputs against criteria. But the judge's biases become my agent's biases. If the judge can't evaluate correctly, neither can the trained agent.
 
-**LLM-as-judge.** Another model evaluates outputs against criteria. Scales better. But the judge's biases become my agent's biases. And if the judge can't evaluate correctly, neither can the trained agent.
+Proxy metrics (tests pass, linter clean, type-checks, code compiles) are verifiable but incomplete. They work as a floor: necessary but not sufficient for quality.
 
-**Proxy metrics.** Tests pass, linter clean, type-checks, code compiles. Not complete but verifiable. Works as a floor (necessary but not sufficient for quality).
+Decomposition helps. I break "good workflow execution" into evaluable sub-tasks. Some have clear signals (code compiles), others need judgment (solution is elegant). Evaluate what I can, sample-review the rest.
 
-**Decomposition.** Break "good workflow execution" into evaluable sub-tasks. Some have clear signals (code compiles), others need judgment (solution is elegant). Evaluate what I can, sample-review the rest.
+Rubric-based grading structures LLM-as-judge with explicit rubrics. Each rubric item specifies what to check, how to format the output, how to extract the score. A grader LLM scores each item. Sum of scores equals reward. This constrains the grader to specific, answerable questions rather than open-ended evaluation.
 
-I don't have this solved. It's an open problem in my setup. The approach will likely be: proxy metrics as baseline, LLM-judge for style/quality, human review on a sample for calibration.
+### Tacit Judgment
 
----
+A harder problem: I know good output when I see it, but can't articulate what makes it good. Classic tacit knowledge problem.
 
-## Model Selection
+Pairwise comparison bypasses explicit criteria. I don't define "good." I just repeatedly judge "A is better than B." The model learns my latent quality function from my choices, not from rules I write. This is how RLHF works: Bradley-Terry models over preference pairs.
 
-For the trainable core, I need to choose a base model. Considerations:
+Example curation also works. I carefully select the best examples for training, even if I can't explain why they're best. The quality function is implicit in the selection.
 
-| Factor | What to look for |
-|--------|------------------|
-| Reasoning capability | Strong base reasoning (Claude-level not necessary, but not weak) |
-| Tool use training | Models trained on tool-calling data adapt faster |
-| Size vs. latency | Larger = more capable, but slower inference |
-| Fine-tuning support | Good documentation, active community, known issues |
-| Licensing | Can I deploy it commercially? |
+Both approaches transfer judgment without articulation. But both still bound the model by my approval. It learns to replicate my choices, not to exceed them.
 
-Current landscape (2025): Llama 3.x, Mistral, Qwen 2.5 are solid options. The "best" depends on my specific tasks and constraints. Empirical testing matters more than benchmarks.
+### Self-Play as Alternative
 
-I don't need to decide now. Trace collection is model-agnostic. The same traces can train any model later.
+When I can't design a reward function, self-play offers an alternative. Let agents compete. Use game outcomes as rewards.
 
----
+Two agents play against each other (or one agent plays both sides). Reward equals win/loss from game rules. Both winning and losing trajectories train the model. No hand-crafted reward function needed.
 
-## The Training Loop
+In Twenty Questions, the agent asks yes/no questions to guess a hidden word. Another LLM answers. Reward is 1 if guessed correctly, 0 otherwise. The agent learns to ask better questions without anyone defining what makes a question "good."
 
-The pattern for training agents on workflows (illustrated by OpenAI's "Agent RFT"):
+In self-play tic-tac-toe, the agent plays against itself. A coordinator synchronizes two environment objects, passing moves between them. Both perspectives train the same model. Training improves reward from -1.0 (random play loses) to positive in about 40 steps.
 
-![Agent RFT diagram](images/openai_agent_rft.png)
+Self-play applies when the task can be framed as a game with clear win/loss, when I can simulate the opponent, and when game outcome correlates with the quality I care about.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Your Environment                                                    │
-│                                                                      │
-│  Task → Agent executes → Trajectory (tool calls, reasoning, answer) │
-│                                   │                                  │
-│                                   ▼                                  │
-│                              Store in DB                             │
-│                          (trajectory + tool calls)                   │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ Final answer
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Grader                                                              │
-│                                                                      │
-│  Evaluates trajectory → Produces reward (e.g., 0.6)                 │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ Reward signal
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Training                                                            │
-│                                                                      │
-│  SFT: Use high-reward trajectories as demonstrations                │
-│  RL:  Use reward signal to update policy                            │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### My Current Approach
 
-The key insight: I'm already generating trajectories when I use Claude Code. The question is whether I'm capturing them.
+I don't have this solved. The approach will likely be: proxy metrics as baseline, LLM-judge with rubrics for style and quality, human review on a sample for calibration, pairwise comparison where I can't articulate criteria.
 
 ---
 
 ## Getting Started: Trace Collection
 
-The first actionable step is trace collection.
+The first actionable step is trace collection. Every time I run my workflow with Claude Code, I can capture the task, each tool call and its result, the final output, and whether it succeeded.
 
-Every time I run my workflow with Claude Code (or any agent), I can capture:
-- The task/input
-- Each tool call and its result
-- The final output
-- Whether it succeeded (by my judgment)
+Why traces specifically? Three reasons.
 
-These traces serve multiple purposes:
-- **Prompt optimization**: Analyze failures, identify patterns, improve prompts
-- **SFT**: Successful traces become training examples
-- **RLHF**: Human judgments on traces become reward signal
+First, traces are model-agnostic. The same traces work for SFT, RLHF, prompt analysis, or evaluation design. I defer the hard decisions (which model, which training method) while accumulating valuable data.
 
-### Implementation Approach
+Second, traces capture tacit judgment implicitly. My successful traces are my quality function in action. Even if I can't articulate what makes output good, traces of good outputs encode it.
 
-Build a custom executor using the Anthropic SDK. Claude Code's tools are straightforward to replicate:
-- `read_file` → `Path.read_text()`
-- `write_file` → `Path.write_text()`
-- `bash` → `subprocess.run()`
-- `search` → `ripgrep` subprocess
-- `glob` → `pathlib.glob()`
+Third, traces are a maximally flexible starting point. I can collect now and decide later how to use them. The cost of collecting is low; the optionality is high.
+
+### Implementation
+
+Build a custom executor using the Anthropic SDK. Claude Code's tools are straightforward to replicate: `read_file` maps to `Path.read_text()`, `write_file` to `Path.write_text()`, `bash` to `subprocess.run()`, and so on.
 
 The executor runs the agent loop and logs every step:
 
@@ -226,10 +141,9 @@ class Trace:
     system_prompt: str
     steps: list[ToolCall]
     final_response: str
-    score: float | None  # Added after evaluation
+    score: float | None
 
 def run_with_trace(task: str, system_prompt: str) -> Trace:
-    """Execute task and capture full trace."""
     client = anthropic.Anthropic()
     messages = [{"role": "user", "content": task}]
     steps = []
@@ -253,132 +167,92 @@ def run_with_trace(task: str, system_prompt: str) -> Trace:
                 score=None,
             )
 
-        # Execute tool calls, record results
         for block in response.content:
             if block.type == "tool_use":
                 result = execute_tool(block.name, block.input)
                 steps.append(ToolCall(
                     tool=block.name,
                     args=block.input,
-                    result=result[:2000],  # Truncate for storage
+                    result=result[:2000],
                     timestamp=datetime.now().isoformat(),
                 ))
 
-        # Continue conversation with tool results
         messages.append({"role": "assistant", "content": response.content})
         messages.append({"role": "user", "content": tool_results})
 ```
 
-### Trace Format
+### Converting Traces to Training Data
 
-```json
-{
-  "id": "a1b2c3d4-...",
-  "task": "Fix the bug in auth.py where login fails for emails with + symbols",
-  "system_prompt": "You are an expert...",
-  "steps": [
-    {
-      "tool": "read_file",
-      "args": {"path": "auth.py"},
-      "result": "def login(email, password):...",
-      "timestamp": "2025-01-06T10:30:00"
-    },
-    {
-      "tool": "write_file",
-      "args": {"path": "auth.py", "content": "..."},
-      "result": "ok",
-      "timestamp": "2025-01-06T10:30:05"
-    },
-    {
-      "tool": "bash",
-      "args": {"command": "pytest test_auth.py"},
-      "result": "...... OK",
-      "timestamp": "2025-01-06T10:30:10"
-    }
-  ],
-  "final_response": "Fixed the bug by...",
-  "score": 0.9
-}
-```
+For SFT, filter to successful traces and convert to chat format. Each tool call becomes an assistant message with tool_calls, followed by a tool message with the result. The final response becomes the last assistant message.
+
+SFT trains on assistant outputs only. User messages and tool results are context, not targets. Most frameworks (TRL, Axolotl) handle loss masking automatically. The model learns to produce assistant tokens given context, not to predict the context itself.
 
 I don't need fine-tuning infrastructure yet. I need traces. Start collecting now; decide how to use them later.
 
 ---
 
-## Converting Traces to Training Data
+## What to Expect
 
-### For SFT
+Concrete numbers from production systems (Tinker cookbook benchmarks).
 
-Filter to successful traces, convert to chat format:
+Verifiable tasks with clear rewards converge fast. Arithmetic goes from 66% to 100% accuracy in about 10 steps. GSM8K math word problems reach 91% accuracy in 220 steps. LiveCodeBench coding improves from 33.8% to 42.7% pass@1 in 100 steps.
 
-```python
-def trace_to_sft(trace: Trace, min_score: float = 0.8) -> dict | None:
-    if trace.score < min_score:
-        return None
+Tool use and multi-turn behaviors emerge quickly. Search-R1 (multi-hop QA with search tools) learns multi-turn behavior in 10-25 steps and reaches 51.8% accuracy on Natural Questions.
 
-    messages = [{"role": "user", "content": trace.task}]
+Self-play games show clear improvement. Guess the Number improves from 40% to over 50% success in 20 steps. Tic-tac-toe goes from -1.0 reward (random play loses) to positive in 40 steps.
 
-    for step in trace.steps:
-        messages.append({
-            "role": "assistant",
-            "tool_calls": [{"function": {"name": step.tool, "arguments": json.dumps(step.args)}}]
-        })
-        messages.append({
-            "role": "tool",
-            "content": step.result
-        })
+Preference learning works. RLHF improves win rate from 40% to 70% in 100 steps. Training for shorter responses shows significant token count reduction in 40 steps.
 
-    messages.append({
-        "role": "assistant",
-        "content": trace.final_response
-    })
+Distillation is efficient. SFT on reasoning data reaches 55% on AIME'24 in 3000 steps. On-policy distillation reaches 65% in just 100 steps.
 
-    return {"messages": messages}
-```
-
-### Loss Masking
-
-SFT trains on assistant outputs only. User messages and tool results are context, not targets.
-
-```
-Token positions:
-[USER] Fix the bug [ASSISTANT] Let me read [TOOL] content... [ASSISTANT] Fixed it
-
-Loss mask:
-  0        0          1          1       0       0          1        1
-  ↑ context (ignored)           ↑ train on this             ↑ train on this
-```
-
-Most frameworks handle this automatically (TRL, Axolotl). The key is understanding that the model learns to produce assistant tokens given context, not to predict the context itself.
-
----
-
-## What "Done" Looks Like
-
-The end state depends on what I decide I want:
-
-**Autonomous with spot-checks.** Agent runs workflows without intervention. I review a sample of outputs for quality assurance. Intervention rate is low enough that it's not the bottleneck.
-
-**Autonomous with guardrails.** Agent runs independently but escalates when uncertain. Quality is maintained because the agent knows what it doesn't know.
-
-**Continuously improving.** Agent runs, I provide occasional feedback, model gets updated periodically. Performance trends upward over time.
-
-I haven't decided which of these is my target. The choice affects how much RL infrastructure I need and whether human feedback stays in the loop permanently or phases out.
+Key patterns: simple verifiable tasks converge in 10-20 steps, complex reasoning takes 100-200+ steps, multi-turn behaviors emerge in 10-25 steps, preference learning shows clear improvement in 40-100 steps, on-policy distillation is dramatically more efficient than SFT.
 
 ---
 
 ## Open Questions
 
-What I haven't figured out yet:
+What I haven't figured out yet.
 
-1. **Evaluation design.** How do I approximate quality automatically? What's the right mix of proxy metrics, LLM-judge, and human review?
+**Evaluation design.** How do I approximate quality automatically? What's the right mix of proxy metrics, LLM-judge, and human review? Partial answer: decompose into verifiable versus judgment, use pairwise comparison for tacit parts.
 
-2. **The end state.** Do I want the human out of the loop entirely? Or is "agent + human verifier" good enough?
+**The end state.** Do I want the human out of the loop entirely? Or is "agent plus human verifier" good enough? Partial answer: probably the latter. My approval function is the ceiling regardless.
 
-3. **When RL is worth it.** SFT on good traces might be enough. RL is more complex and needs reward engineering. When does the added complexity pay off?
+**When RL is worth it.** SFT on good traces might be enough. RL is more complex and needs reward engineering. When does the added complexity pay off? Partial answer: when I have verifiable rewards that let the model explore beyond my demos.
 
-4. **Model selection timing.** Do I pick a model now and start building around it? Or stay model-agnostic until I have enough traces to run experiments?
+**Model selection timing.** Do I pick a model now and start building around it? Or stay model-agnostic until I have enough traces to run experiments? Answer: stay agnostic. Trace collection is model-agnostic; traces are the asset.
 
-5. **The taste/judgment gap.** Some of my domain knowledge is tacit—I know good output when I see it, but can't articulate why. How do I transfer this to a model?
+**Approval drift.** If my taste improves via exposure to agent outputs, that's good. If it drifts toward accepting what the model easily produces, that's bad. How do I distinguish these?
 
-These are research questions for me. This document is the framing that helps me think about them.
+---
+
+## References
+
+### Libraries and Tools
+
+**Tinker** (Thinking Machines Lab) is a distributed training SDK for fine-tuning LLMs. It separates the training plane from the sampling plane, enabling parallel rollout collection. The cookbook includes complete recipes for SFT, RL, RLHF, distillation, and self-play. https://thinkingmachines.ai/tinker/
+
+**Verifiers / Environments Hub** (Prime Intellect) is a community repository of RL environments for LLMs. Install environments with `prime env install user/env-id`. https://app.primeintellect.ai/dashboard/environments
+
+**Sandbox Fusion** (ByteDance) provides safe code execution for RL training via Docker-based sandboxing. https://github.com/bytedance/SandboxFusion
+
+**TRL** (Hugging Face) is a transformer reinforcement learning library with SFTTrainer, PPOTrainer, and DPOTrainer. https://github.com/huggingface/trl
+
+**Axolotl** is a fine-tuning framework with automatic loss masking, supporting LoRA, QLoRA, and full fine-tuning. https://github.com/OpenAccess-AI-Collective/axolotl
+
+### Key Papers
+
+Prompt and context distillation: Askell et al. (2021), "A General Language Assistant as a Laboratory for Alignment," arXiv:2112.00861. Snell et al. (2022), "Learning by Distilling Context," arXiv:2209.15189.
+
+RLHF: Ouyang et al. (2022), "Training Language Models to Follow Instructions with Human Feedback," arXiv:2203.02155. Bai et al. (2022), "Training a Helpful and Harmless Assistant with RLHF," arXiv:2204.05862.
+
+Direct Preference Optimization: Rafailov et al. (2023), "Direct Preference Optimization: Your Language Model is Secretly a Reward Model," arXiv:2305.18290.
+
+GRPO (group relative policy optimization): DeepSeekMath (2024), arXiv:2402.03300. The key technique is centering advantages within groups, not globally.
+
+Agentic RL: Search-R1 (2025), "Training LLMs to Reason and Leverage Search Engines with RL," arXiv:2503.09516.
+
+Multi-agent and self-play: TextArena (2025), arXiv:2504.11442.
+
+### Blog Posts
+
+Thinking Machines Lab, "On-Policy Distillation," https://thinkingmachines.ai/blog/on-policy-distillation
