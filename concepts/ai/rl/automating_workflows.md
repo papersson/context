@@ -6,8 +6,7 @@ I want to automate business workflows so an agent performs them autonomously, at
 
 | Term | Definition |
 |------|------------|
-| **Agent** | The system: LLM + prompts + tools + orchestration |
-| **Harness** | The agent program (Claude Code, Aider, custom). Matters for trace collection |
+| **Agent** | The system: LLM + prompts + tools + orchestration (e.g., Claude Code with Claude) |
 | **Trace** | Captured execution: task, tool calls, results, output, score |
 
 | LLM Weight Access | Description | Examples |
@@ -22,6 +21,8 @@ I want to automate business workflows so an agent performs them autonomously, at
 | 2 | Prompt-automated | Closed | Prompts handle most cases |
 | 3 | Trained | Open | Behavior in weights |
 | 4 | RL-enhanced | Open | Model explores beyond demos |
+
+Note: Trace collection requires instrumenting the agent. Commercial tools (Claude Code) may limit this; custom implementations give full control.
 
 ---
 
