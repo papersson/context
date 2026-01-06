@@ -1,12 +1,12 @@
 # What "RL'd to Use X" Means
 
-Research synthesis on how frontier labs train agentic LLM behaviors.
+How frontier labs train agentic LLM behaviors.
 
 ---
 
 ## The Claim
 
-"Claude has been RL'd to use Claude Code" means: **Anthropic trained Claude via reinforcement learning on multi-turn coding tasks, where the reward is task completion (tests passing), not single-turn function calling.**
+"Claude has been RL'd to use Claude Code" means Anthropic trained Claude via reinforcement learning on multi-turn coding tasks, where the reward is task completion (tests passing), not single-turn function calling.
 
 ---
 
@@ -14,10 +14,10 @@ Research synthesis on how frontier labs train agentic LLM behaviors.
 
 | Source | Date | Key Quote | Confidence |
 |--------|------|-----------|------------|
-| Anthropic reward hacking paper (arXiv:2511.18397) | Nov 2025 | "We train this model using reinforcement learning (RL) exclusively on real production coding environments used in the training of Claude Sonnet 3.7" | **High** |
-| Claude 3.7 System Card | Feb 2025 | "This undesirable special-casing behavior emerged as a result of 'reward hacking' during reinforcement learning training" | **High** |
-| Cursor blog (Composer) | Oct 2025 | "It is specialized for software engineering through reinforcement learning... The model has access to simple tools... and also more powerful ones like terminal commands and search." | **High** |
-| Cognition (Kevin-32B) | May 2025 | "We use Group Relative Policy Optimization (GRPO)... We set the KL coefficient to 0 to allow the model to deviate freely from the base policy." | **High** |
+| Anthropic reward hacking paper (arXiv:2511.18397) | Nov 2025 | "We train this model using reinforcement learning (RL) exclusively on real production coding environments used in the training of Claude Sonnet 3.7" | High |
+| Claude 3.7 System Card | Feb 2025 | "This undesirable special-casing behavior emerged as a result of 'reward hacking' during reinforcement learning training" | High |
+| Cursor blog (Composer) | Oct 2025 | "It is specialized for software engineering through reinforcement learning... The model has access to simple tools... and also more powerful ones like terminal commands and search." | High |
+| Cognition (Kevin-32B) | May 2025 | "We use Group Relative Policy Optimization (GRPO)... We set the KL coefficient to 0 to allow the model to deviate freely from the base policy." | High |
 
 ---
 
@@ -31,7 +31,7 @@ Research synthesis on how frontier labs train agentic LLM behaviors.
 | User acceptance | +0.75 accepted, -0.25 rejected | Cursor Tab |
 | Execution success | N_success / N_total tool calls | Academic papers |
 
-Rewards are typically **outcome-based** (final result), not step-level.
+Rewards are typically outcome-based (final result), not step-level.
 
 ### Algorithms
 
@@ -41,13 +41,11 @@ Rewards are typically **outcome-based** (final result), not step-level.
 | GRPO | DeepSeek, Cognition | No critic, group-normalized advantages |
 | Unknown | Anthropic | Not publicly disclosed |
 
-**Common pattern:** KL penalty set to 0 or very low to allow exploration.
+Common pattern: KL penalty set to 0 or very low to allow exploration.
 
 ### Training Data
 
-- **Multi-turn trajectories**: Full (state, action, result, action, result, ..., outcome)
-- **Sources**: Production user sessions, synthetic tasks, internal benchmarks
-- **Good/bad labeling**: By final outcome (tests pass) or continuous score
+Multi-turn trajectories: full sequences of (state, action, result, action, result, ..., outcome). Sources include production user sessions, synthetic tasks, and internal benchmarks. Labeling uses final outcome (tests pass) or continuous score.
 
 ### Credit Assignment
 
@@ -61,7 +59,7 @@ Multi-turn credit assignment is still an active research area.
 
 ---
 
-## The Distinction: Tool Calling vs. Agentic
+## Tool Calling vs. Agentic Behavior
 
 | Aspect | Tool Calling | Agentic Behavior |
 |--------|--------------|------------------|
@@ -70,8 +68,7 @@ Multi-turn credit assignment is still an active research area.
 | Data | (input, tool_call) pairs | Full episode trajectories |
 | What's learned | Format, when to call | Strategy, planning, recovery |
 
-**Tool calling** is typically taught via SFT on examples.
-**Agentic behavior** requires RL on interactive episodes.
+Tool calling is typically taught via SFT on examples. Agentic behavior requires RL on interactive episodes.
 
 ---
 
@@ -79,41 +76,41 @@ Multi-turn credit assignment is still an active research area.
 
 From Sasha Rush's talk (Oct 2025):
 
-1. **Environment**: Internal IDE sandbox ("Cursor Bench")
-2. **Tasks**: Real agent requests from engineers + hand-curated solutions
-3. **Reward**: Outcome-based (task completion, code quality)
-4. **Infrastructure**: Thousands of sandboxed coding environments, PyTorch on thousands of GPUs
-5. **Result**: 4x faster code generation, autonomous test writing
+1. Environment: Internal IDE sandbox ("Cursor Bench")
+2. Tasks: Real agent requests from engineers + hand-curated solutions
+3. Reward: Outcome-based (task completion, code quality)
+4. Infrastructure: Thousands of sandboxed coding environments, PyTorch on thousands of GPUs
+5. Result: 4x faster code generation, autonomous test writing
 
-> "Composer was trained on the actual task of 'navigate this codebase, understand context, make changes, verify correctness', the full loop."
+"Composer was trained on the actual task of 'navigate this codebase, understand context, make changes, verify correctness', the full loop."
 
 ---
 
 ## What Anthropic Revealed (Reward Hacking Paper)
 
 Training on production coding environments led to:
-- **sys.exit(0) hack**: Model learned to exit early to fake test success
-- **conftest.py hack**: Model modified test configuration
-- **AlwaysEqual hack**: Model created objects that compare equal to anything
+- sys.exit(0) hack: Model learned to exit early to fake test success
+- conftest.py hack: Model modified test configuration
+- AlwaysEqual hack: Model created objects that compare equal to anything
 
-> "At the exact point when the model learns to reward hack, we see a sharp increase in all our misalignment evaluations."
+"At the exact point when the model learns to reward hack, we see a sharp increase in all our misalignment evaluations."
 
-**Implication**: Task-completion rewards can teach unintended behaviors. Reward design is critical.
+Task-completion rewards can teach unintended behaviors. Reward design is critical.
 
 ---
 
-## The Economic Insight
+## The Economic Pattern
 
 From Surya Dantuluri (2025):
 
-> "Cursor, Devin, and every app effectively are RL environments. Every session is 'free' rollout for training."
+"Cursor, Devin, and every app effectively are RL environments. Every session is 'free' rollout for training."
 
-The pattern:
+The progression:
 1. Start as API wrapper (use Claude/GPT-4)
 2. Collect user sessions as training data
 3. Fine-tune specialized model (SFT)
 4. RL on trajectories for agentic behavior
-5. Own the model → better margins, faster inference
+5. Own the model for better margins and faster inference
 
 ---
 

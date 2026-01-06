@@ -1,6 +1,6 @@
 # RL Taxonomy (2025)
 
-Reference card for the modern RL landscape.
+A reference card for the modern RL landscape.
 
 ---
 

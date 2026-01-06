@@ -1,6 +1,6 @@
 # Trace Collection
 
-Capturing execution traces from Claude Code sessions.
+How to capture execution traces from Claude Code sessions.
 
 ---
 
@@ -11,22 +11,26 @@ Capturing execution traces from Claude Code sessions.
 | Claude Code Hooks | Shell commands on events | No code changes | Limited data, fragile |
 | API Proxy | Intercept Anthropic calls | Works with unmodified CC | SSL complexity |
 | Fork Claude Code | Add logging to source | Full functionality | Maintenance burden |
-| Custom Executor | Build with Anthropic SDK | Full control, clean | Implement tools yourself |
+| **Custom Executor** | Build with Anthropic SDK | **Full control, clean** | Implement tools yourself |
 
-Custom executor is the recommendation. You get exactly what you need in about 80 lines.
+**Recommendation: Custom Executor.** You get exactly what you need in ~80 lines.
 
 ---
 
 ## Why Custom Executor
 
-Full control over what data you capture. Simple to implement (tools are trivial). No dependencies beyond Anthropic SDK. Structured JSON from the start. Headless, easy to run in automated loops.
+1. **Full control** — capture exactly the data you need
+2. **Simple** — tools are trivial to implement
+3. **No dependencies** — just Anthropic SDK
+4. **Clean traces** — structured JSON from the start
+5. **Headless** — easy to run in automated loops
 
-Claude Code's tools are straightforward:
-- `read_file` is `Path.read_text()`
-- `write_file` is `Path.write_text()`
-- `bash` is `subprocess.run()`
-- `search` is `grep`/`ripgrep` subprocess
-- `glob` is `pathlib.glob()`
+Claude Code's tools aren't magic:
+- `read_file` → `Path.read_text()`
+- `write_file` → `Path.write_text()`
+- `bash` → `subprocess.run()`
+- `search` → `grep`/`ripgrep` subprocess
+- `glob` → `pathlib.glob()`
 
 ---
 

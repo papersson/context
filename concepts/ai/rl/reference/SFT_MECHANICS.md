@@ -1,6 +1,6 @@
 # SFT Mechanics
 
-How supervised fine-tuning works.
+Quick reference for how supervised fine-tuning works.
 
 ---
 
@@ -9,7 +9,7 @@ How supervised fine-tuning works.
 | Aspect | Pretraining | SFT |
 |--------|-------------|-----|
 | Task | Predict next token at every position | Predict assistant reply given context |
-| Loss | Cross-entropy on all tokens | Cross-entropy on assistant tokens only |
+| Loss | Cross-entropy on **all** tokens | Cross-entropy on **assistant tokens only** |
 | Data | Raw text corpus | (instruction, response) pairs |
 
 ---
@@ -29,7 +29,7 @@ Loss mask:
   ↑ user tokens (ignored)       ↑ assistant tokens (loss computed)
 ```
 
-User tokens are masked by setting labels to `-100`, which PyTorch's `CrossEntropyLoss` ignores.
+**Implementation:** User tokens are masked by setting labels to `-100`, which PyTorch's `CrossEntropyLoss` ignores.
 
 ---
 
@@ -61,7 +61,7 @@ User tokens are masked by setting labels to `-100`, which PyTorch's `CrossEntrop
 }
 ```
 
-Loss is computed on assistant messages only (including tool_calls JSON).
+**Loss is computed on assistant messages only** (including tool_calls JSON).
 
 ---
 
@@ -75,7 +75,7 @@ Loss is computed on assistant messages only (including tool_calls JSON).
 
 ---
 
-## Prompt Loss Weight
+## The Nuance: Prompt Loss Weight
 
 Research (EMNLP 2024) suggests small non-zero loss on prompts can help:
 
@@ -122,8 +122,10 @@ def trace_to_sft(trace: Trace, min_score: float = 0.8) -> dict | None:
 
 ---
 
-## The Limit
+## Key Insight
 
-SFT teaches imitation. The model learns: given this task, produce this sequence of actions. Given this tool result, respond this way.
+**SFT teaches imitation.** The model learns:
+- Given this task → produce this sequence of actions
+- Given this tool result → respond this way
 
 It cannot exceed the quality of the training data. For that, you need RL.

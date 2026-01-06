@@ -1,6 +1,6 @@
 # The Optimization Spectrum
 
-How prompt optimization, SFT, and RL relate.
+How prompt optimization, SFT, and RL relate — and where your workflow fits.
 
 ---
 
@@ -38,7 +38,7 @@ OPTIMIZATION METHODS
 | Exploration | Mutation | Entropy bonus, noise |
 | Can exceed demonstrations? | No | Yes |
 
-Prompt optimization is black-box search over text: mutation and selection with no gradients. RL uses gradients to update a parameterized policy.
+**The key distinction:** RL uses gradients to update a parameterized policy. Prompt optimization is black-box search over text — mutation + selection with no gradients.
 
 ---
 
@@ -54,7 +54,7 @@ If you can execute it in Claude Code, you have:
 | Terminal | Verification passes or fails |
 | Reward | Your evaluator (verifier + LLM judge) |
 
-This is an RL environment. What you do with it determines the optimization method.
+**This IS an RL environment.** What you do with it determines the optimization method.
 
 ---
 
@@ -96,7 +96,7 @@ This is an RL environment. What you do with it determines the optimization metho
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Each stage is optional. Prompt optimization alone is complete and valuable.
+**Each stage is optional.** Prompt optimization alone is complete and valuable.
 
 ---
 
