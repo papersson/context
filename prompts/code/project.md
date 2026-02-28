@@ -20,7 +20,19 @@ Language-agnostic, the rule is simple: a fresh clone with the correct runtime sh
 
 ### Secrets & Environment Variables
 
-Commit a `.env.example` with every required variable stubbed out. The setup script generates or copies `.env` if it's missing, pulling values from a vault, CI environment, or local defaults for development.
+Commit a `.env.example` with every required variable stubbed out and commented — each variable should explain what it's for and where to get a value. The setup script generates or copies `.env` if it's missing, pulling values from a vault, CI environment, or local defaults for development.
+
+```bash
+# .env.example
+# PostgreSQL connection string. For local dev, use the docker compose instance.
+DATABASE_URL=postgresql://localhost:5432/myapp_dev
+
+# Stripe API key. Get a test key from https://dashboard.stripe.com/test/apikeys
+STRIPE_SECRET_KEY=sk_test_...
+
+# Log level: debug | info | warn | error
+LOG_LEVEL=info
+```
 
 Secrets are never hardcoded and never committed. Where possible, local development and CI should source secrets the same way — same variable names, same structure, different backends. This keeps the gap between environments small and predictable.
 
@@ -34,81 +46,179 @@ When local and CI diverge, bugs hide in the gap. Treat "it passes in CI but fail
 
 Every project needs a uniform interface — a set of predictable verbs that work the same regardless of whether the project uses Python, Node, Rust, or anything else. This idea was formalized by GitHub in 2015 as **"Scripts to Rule Them All" (STRTA)**: a `script/` directory at the project root with consistently named entry points.
 
-**The standard STRTA scripts:**
+In practice, most projects implement this pattern through a task runner rather than individual scripts. A `justfile` or `Makefile` at the project root serves the same purpose: uniform targets with discoverable names. The STRTA naming convention (setup, test, server, etc.) is what matters — the mechanism is flexible.
 
-| Script | Responsibility |
+**justfile is the recommended default.** It has cleaner syntax, built-in discoverability via `just --list`, and no `.PHONY` boilerplate. Use a Makefile when you need zero-dependency portability (open source, enterprise environments where you can't assume `just` is installed).
+
+**The standard verbs:**
+
+| Verb | Responsibility |
 |---|---|
-| `script/bootstrap` | Install/update all dependencies |
-| `script/setup` | First-time setup (calls bootstrap, then initializes state) |
-| `script/update` | Update after a pull (calls bootstrap, then migrates etc.) |
-| `script/server` | Start the app |
-| `script/test` | Run the test suite |
-| `script/cibuild` | What CI calls (setup + test in a clean environment) |
-| `script/console` | Open an interactive REPL |
+| `setup` | First-time setup (install deps, generate `.env`, seed data) |
+| `dev` | Start the app in development mode |
+| `test` | Run the test suite |
+| `lint` | Run linter |
+| `fmt` | Run formatter |
+| `typecheck` | Run type checker |
+| `check` | Run lint + typecheck + test — **mirrors CI exactly** |
+| `ci` | What CI calls (setup + check in a clean environment) |
 
-The scripts are composable — `setup` calls `bootstrap`, `cibuild` calls `test`. Each does one unit of work.
+**The `default` recipe should print all available commands:**
 
-**In practice, most projects implement this pattern through a task runner rather than individual scripts.** A `Makefile` or `justfile` at the project root serves the same purpose: uniform targets with discoverable names. The STRTA naming convention (setup, test, server, etc.) is what matters — the mechanism is flexible.
+```just
+# Show all available commands
+default:
+    @just --list
+```
+
+The justfile *is* the project's API. If an action isn't in `just --list`, it doesn't exist. If a contributor needs to read a README to use the project, the justfile isn't complete enough.
 
 **The two layers:**
 
-There are two levels of task running in a well-structured project, and it's worth understanding how they relate:
+There are two levels of task running in a well-structured project:
 
-1. **Language-native runners** — `uv run`, `npm scripts`, `cargo` — know how to execute things *within* their ecosystem. They handle dependency resolution, virtualenvs, and toolchain specifics. They're the implementation layer.
+1. **Language-native runners** — `uv run`, `bun`, `cargo` — know how to execute things *within* their ecosystem. They handle dependency resolution, virtualenvs, and toolchain specifics. They're the implementation layer.
 
-2. **Project-level runners** — `Makefile`, `justfile`, or `script/` — sit *above* the language tooling and provide a **uniform interface**. A `make test` might call `uv run pytest` in a Python project or `bun test` in a JS project. The developer doesn't need to know which.
+2. **Project-level runners** — `justfile` or `Makefile` — sit *above* the language tooling and provide a **uniform interface**. A `just test` might call `uv run pytest` in a Python project or `bun test` in a JS project. The developer doesn't need to know which.
 
-The project-level runner is the one a new contributor interacts with. The language-native runner is what it delegates to. Example:
-
-```makefile
-# Makefile
-.PHONY: setup test server lint
-
-setup:
-	uv sync
-	cp -n .env.example .env || true
-
-test:
-	uv run pytest
-
-server:
-	uv run uvicorn app:main --reload
-
-lint:
-	uvx ruff check .
-	uvx ruff format --check .
-```
-
-```just
-# justfile
-setup:
-    uv sync
-    cp -n .env.example .env || true
-
-test:
-    uv run pytest
-
-server:
-    uv run uvicorn app:main --reload
-
-lint:
-    uvx ruff check .
-    uvx ruff format --check .
-```
+The project-level runner is the one a new contributor interacts with. The language-native runner is what it delegates to.
 
 **For simple projects** where the language tooling already provides good ergonomics (e.g., `cargo test` is already obvious), a dedicated task runner may be unnecessary overhead. The two-layer model earns its keep when the project has setup steps, env vars to manage, services to coordinate, or when CI needs a single entry point.
 
-**Makefile vs justfile:**
+### Local Dev Data
 
-| | Makefile | justfile |
-|---|---|---|
-| Availability | Pre-installed on virtually all Unix systems | Requires installation (`cargo install just`, or via package manager) |
-| Syntax | Tab-sensitive, cryptic variable assignment, `.PHONY` boilerplate | Spaces or tabs, clean variable syntax, no `.PHONY` needed |
-| Discovery | `cat Makefile` or `make help` (if you wrote one) | `just --list` shows all recipes with descriptions |
-| Industry adoption | De facto standard, universally recognized | Growing fast, especially in Rust/modern tooling communities |
-| Best for | Teams, open source, enterprise (zero-dependency) | Solo/greenfield, projects already using Nix (just is usually available) |
+A project should be usable without access to production or staging environments. This means providing a way to run with realistic data locally.
 
-Either works. Makefile is the safer default for shared projects; justfile is nicer to write and maintain. Pick one per project and be consistent.
+**Seed scripts:** A `just seed` recipe that populates a local database with a small but representative dataset — enough to exercise the main workflows and edge cases you care about. This takes 30 minutes to write once and saves hours of "let me point at staging."
+
+**Recorded API responses:** For external APIs your project depends on, use response recording tools (`vcrpy` for Python, `polly.js` or `msw` for TypeScript) to capture real responses once, then replay them locally. You get realistic data without hitting live services, and your tests work offline.
+
+**The standard:**
+
+```just
+# Set up local development environment with data
+dev-setup:
+    docker compose up -d
+    just db-migrate
+    just seed
+
+# Seed local database with representative test data
+seed:
+    uv run python scripts/seed.py
+```
+
+Testing against production or staging APIs works until it doesn't — you can't test edge cases, you can't work offline, you can't run tests in CI without credentials, and you're one bad request away from corrupting real data.
+
+---
+
+## Code Organization
+
+Good project structure makes the question "where does this go?" have an obvious answer. This section describes a sensible default — not a mandate, but a starting point that works for most projects.
+
+### The Layering Principle
+
+Separate your code into three layers based on what it does:
+
+1. **Domain** — Pure business logic. Functions that take data in and return data out. No database calls, no HTTP requests, no file IO. This code is trivially testable — no mocks, no setup, just input → output.
+
+2. **Services** — The IO boundary. Code that talks to databases, external APIs, the filesystem. Services implement interfaces and orchestrate domain logic with real-world side effects.
+
+3. **API / Entrypoints** — The thin outer shell. HTTP handlers, CLI commands, queue consumers. These parse input, delegate to services, and format output. As little logic here as possible.
+
+**The rule:** Domain imports nothing from Services or API. Services import from Domain. API imports from Services. Dependencies flow inward.
+
+This isn't about ceremony — it's about testability and clarity. When your domain layer is pure, you can test your business logic with simple assertions. When your services are behind interfaces, you can swap real databases for test containers. When your API layer is thin, there's nothing interesting to test there except integration.
+
+### Recommended Structures
+
+**Python (uv):**
+
+```
+src/
+  app/
+    domain/           # Pure logic — no IO imports
+      models.py       # Data types, value objects
+      pricing.py      # Business rules as pure functions
+      validation.py
+    services/         # IO boundary — DB, HTTP, filesystem
+      user_repo.py    # Data access (interface + implementation)
+      email.py
+      payment.py
+    api/              # Thin HTTP layer — parse, delegate, respond
+      routes.py
+      middleware.py
+      deps.py         # Dependency wiring (FastAPI Depends, etc.)
+    config.py         # Typed config, validated at startup
+    main.py           # Entrypoint — wiring only, no logic
+tests/
+  domain/             # Fast, no mocks needed
+  services/           # Use testcontainers for real deps
+  api/                # Integration tests against real HTTP
+```
+
+**TypeScript (Bun / Effect):**
+
+```
+src/
+  domain/             # Pure logic — zero imports from services
+    models.ts         # Types, branded types, discriminated unions
+    pricing.ts        # Business rules as pure functions
+    validation.ts
+  services/           # Effect services — the IO boundary
+    user-repo.ts      # Service interface + live implementation
+    email-client.ts
+    payment.ts
+  api/                # HTTP handlers — thin, delegate to services
+    routes.ts
+    middleware.ts
+  config.ts           # Effect Config — validated at startup
+  main.ts             # Entrypoint — layer wiring only
+test/
+  domain/             # Fast, pure function tests
+  services/           # Testcontainers or test implementations
+  api/                # Integration tests
+```
+
+**Rust:**
+
+```
+src/
+  domain/             # Pure types and logic
+    mod.rs
+    models.rs
+    pricing.rs
+  services/           # Trait definitions + implementations
+    mod.rs
+    user_repo.rs
+    email.rs
+  api/                # Handlers (Axum, Actix, etc.)
+    mod.rs
+    routes.rs
+  config.rs
+  main.rs             # Wiring
+tests/
+  domain/
+  services/
+  api/
+```
+
+### When the Domain Is Thin
+
+Not every project has complex business logic. Data pipelines, CRUD APIs, and internal tools often have thin domains — and that's fine. Don't force a thick domain layer when the interesting complexity lives in orchestration, data flow, or infrastructure.
+
+If your domain module is 50 lines of straightforward data transformations, that's the correct answer. The layering principle still helps because it tells you where things go, but don't manufacture abstraction to fill a folder.
+
+### Explicit Public APIs
+
+Each module should export a clear public interface. In Python, use `__init__.py` to control what's importable. In TypeScript, use barrel files (`index.ts`) or explicit exports. This prevents consumers from reaching into internal implementation details.
+
+```python
+# src/app/domain/__init__.py
+from .models import User, Order
+from .pricing import calculate_discount
+
+# Everything else is private to the module
+```
 
 ---
 
@@ -134,14 +244,22 @@ my-project/
 ├── src/
 │   └── my_project/
 │       ├── __init__.py
+│       ├── domain/
+│       ├── services/
+│       ├── api/
+│       ├── config.py
 │       └── main.py
 ├── tests/
-│   └── test_main.py
+│   ├── domain/
+│   ├── services/
+│   └── api/
+├── scripts/
+│   └── seed.py
 ├── .env.example
 ├── .python-version
 ├── pyproject.toml
 ├── uv.lock
-├── Makefile / justfile
+├── justfile
 └── README.md
 ```
 
@@ -154,11 +272,43 @@ my-project/
 | Type checking | `mypy` or `pyright` |
 | Testing | `pytest` (via `uv run pytest`) |
 
+**Standard justfile:**
+
+```just
+default:
+    @just --list
+
+setup:
+    uv sync
+    cp -n .env.example .env || true
+
+dev:
+    uv run fastapi dev src/my_project/main.py
+
+test:
+    uv run pytest
+
+lint:
+    uvx ruff check .
+
+fmt:
+    uvx ruff format .
+
+typecheck:
+    uv run pyright
+
+check: lint typecheck test
+    @echo "✓ All checks passed"
+
+seed:
+    uv run python scripts/seed.py
+```
+
 **How it maps to the principles:**
 
 - **Environment as code:** `uv run` auto-syncs the virtualenv against `uv.lock` before every command. Deleting `.venv` and running `uv run` recreates it instantly. No manual activate/deactivate cycle.
-- **Dependency management:** `uv.lock` is the lockfile — commit it. `uv add <package>` updates both `pyproject.toml` and the lockfile. `uv sync` restores the exact environment.
-- **CI parity:** CI runs `uv sync && uv run pytest`. Same commands as local development.
+- **Dependency management:** `uv.lock` is the lockfile — commit it. `uv add <package>` updates both `pyproject.toml` and the lockfile. `uv sync --locked` in CI ensures the lockfile is up to date.
+- **CI parity:** CI runs `just check`. Same command as local development.
 
 **Nix + direnv integration:** Add a `.envrc` with `use flake` or `use nix` and include `uv` in the Nix shell. When Nix manages the Python version, set `python-preference = "only-system"` in `pyproject.toml` under `[tool.uv]` to prevent uv from downloading its own Python.
 
@@ -187,15 +337,23 @@ pnpm init
 ```
 my-project/
 ├── src/
+│   ├── domain/
+│   ├── services/
+│   ├── api/
+│   ├── config.ts
 │   └── index.ts
-├── tests/
-│   └── index.test.ts
+├── test/
+│   ├── domain/
+│   ├── services/
+│   └── api/
+├── scripts/
+│   └── seed.ts
 ├── .env.example
 ├── package.json
 ├── bun.lock / pnpm-lock.yaml
 ├── tsconfig.json
 ├── biome.json
-├── Makefile / justfile
+├── justfile
 └── README.md
 ```
 
@@ -209,13 +367,45 @@ my-project/
 | Testing | `bun test` (built-in) or Vitest |
 | TypeScript | Built-in (Bun) or `tsc` |
 
+**Standard justfile:**
+
+```just
+default:
+    @just --list
+
+setup:
+    bun install
+    cp -n .env.example .env || true
+
+dev:
+    bun run --watch src/index.ts
+
+test:
+    bun test
+
+lint:
+    bunx biome check .
+
+fmt:
+    bunx biome check --write .
+
+typecheck:
+    tsc --noEmit
+
+check: lint typecheck test
+    @echo "✓ All checks passed"
+
+seed:
+    bun run scripts/seed.ts
+```
+
 **How it maps to the principles:**
 
-- **Environment as code:** Pin the runtime version via `.node-version` (Node) or via Nix/mise. With Bun, `bun install` is near-instant so zero-command setup via direnv is practical — just `bun install && bun run dev` in the `.envrc`.
+- **Environment as code:** Pin the runtime version via `.node-version` (Node) or via Nix/mise. With Bun, `bun install` is near-instant so zero-command setup via direnv is practical.
 - **Dependency management:** Lockfiles (`bun.lock` or `pnpm-lock.yaml`) are committed. `pnpm` is preferred over `npm` for Node projects because of its content-addressable store — faster installs and no phantom dependencies.
-- **CI parity:** `bun install --frozen-lockfile && bun test` or `pnpm install --frozen-lockfile && pnpm test`. The `--frozen-lockfile` flag ensures CI fails if the lockfile is out of date rather than silently updating it.
+- **CI parity:** `bun install --frozen-lockfile && just check` or `pnpm install --frozen-lockfile && just check`. The `--frozen-lockfile` flag ensures CI fails if the lockfile is out of date rather than silently updating it.
 
-**Monorepo note:** For multi-package projects, both Bun and pnpm support workspaces natively. Define workspace members in `package.json` and keep a single lockfile at the root.
+**Monorepo note:** For multi-package projects, both Bun and pnpm support workspaces natively. Define workspace members in `package.json` and keep a single lockfile at the root. For multi-language monorepos (e.g., TypeScript + Python), use Turborepo for cross-language task orchestration — it understands the package dependency graph and only rebuilds what changed.
 
 ---
 
@@ -236,6 +426,16 @@ cd my-project
 ```
 my-project/
 ├── src/
+│   ├── domain/
+│   │   ├── mod.rs
+│   │   └── models.rs
+│   ├── services/
+│   │   ├── mod.rs
+│   │   └── user_repo.rs
+│   ├── api/
+│   │   ├── mod.rs
+│   │   └── routes.rs
+│   ├── config.rs
 │   ├── main.rs
 │   └── lib.rs
 ├── tests/
@@ -255,15 +455,9 @@ my-workspace/
 ├── Cargo.toml            # [workspace] members
 ├── Cargo.lock            # shared across all crates
 ├── crates/
-│   ├── core/
-│   │   ├── Cargo.toml
-│   │   └── src/
+│   ├── core/             # domain types and logic
 │   ├── cli/
-│   │   ├── Cargo.toml
-│   │   └── src/
 │   └── server/
-│       ├── Cargo.toml
-│       └── src/
 └── rust-toolchain.toml
 ```
 
@@ -298,12 +492,16 @@ components = ["rustfmt", "clippy"]
 
 - [ ] Can a new clone go from zero to running in one command?
 - [ ] Is the full toolchain declared in code (Nix flake, setup script, or equivalent)?
-- [ ] Is there a project-level task runner with standard verbs (setup, test, server, lint)?
-- [ ] Do task runner targets delegate to language-native tooling (not duplicate it)?
+- [ ] Is there a justfile with standard verbs (setup, dev, test, lint, fmt, check)?
+- [ ] Does `just check` mirror CI exactly?
+- [ ] Do justfile recipes delegate to language-native tooling (not duplicate it)?
 - [ ] Are all dependencies pinned with a lock file?
 - [ ] Does the setup step skip work when nothing has changed?
-- [ ] Is `.env.example` committed with all required variables?
+- [ ] Is `.env.example` committed with commented explanations for every variable?
 - [ ] Are secrets sourced from a vault or environment — never hardcoded?
 - [ ] Does CI use the same entry points as local development?
 - [ ] Is the runtime/compiler version pinned (`.python-version`, `rust-toolchain.toml`, `.node-version`)?
 - [ ] Can two developers on different machines get identical results?
+- [ ] Is there seed data or fixture setup for local development (`just seed`)?
+- [ ] Is the code organized with a clear separation of domain, services, and API?
+- [ ] Does each module export an explicit public API?
