@@ -1,8 +1,8 @@
 # Designing Agent-Friendly APIs
 
-APIs are increasingly consumed by LLM-powered agents, not just human developers. This changes what good API design looks like — not by replacing the fundamentals, but by shifting emphasis. Agents don't read prose documentation, don't tolerate ambiguity well, and can't intuit unstated conventions. But they can iterate fast, learn from structured feedback, and improve over time if the API lets them.
+APIs are increasingly consumed by LLM-powered agents, not just human developers. This changes what good API design looks like — not by replacing the fundamentals, but by shifting emphasis. Agents don't read prose documentation, don't tolerate ambiguity well, and can't intuit unstated conventions. But they can iterate fast, learn from feedback, and improve over time if the API lets them.
 
-Designing for agents means designing APIs that teach their consumers through interaction.
+Designing for agents means designing APIs that teach their consumers through interaction. And "API" here means any programmatic interface — HTTP endpoints, CLIs, SDKs, anything an agent invokes and gets a response from.
 
 ## The two mechanisms
 
@@ -18,48 +18,48 @@ The design challenge is in the boundary between them: anything the agent can rel
 
 ## Bootstrap context
 
-A machine-readable onboarding endpoint — served at a well-known path like `/llms` or as a static `llms.txt` file — gives agents the context they need to start working with your API. Think of it as `robots.txt` for tool use: a standardized location where machines go to understand how to interact with a service.
+An agent needs enough context to make a reasonable first attempt. How that context is delivered varies by interface — a well-known endpoint like `/llms.txt`, a `--help` flag, a discovery response — but the function is the same: teach the consumer the surface area before they start making real calls.
 
-This endpoint should cover: endpoint schemas (parameters, types, required vs. optional fields, response shapes), canonical workflows (a few representative sequences showing how the API is typically used — not exhaustive, just enough to establish patterns), heuristics and constraints (when to retry vs. reformulate, which parameter combinations are invalid, rate limits), and behavioral guidance (what "good" looks like — for a search API, this might mean explaining what relevance scores mean or when zero results indicates a bad query vs. genuinely no matches).
+This should cover: what endpoints or commands exist and what they do, what the parameters are and which ones matter, a few canonical workflows showing typical usage, and behavioral guidance (what "good" looks like — for a search API, this might mean explaining what relevance scores mean or when zero results indicates a bad query vs. genuinely no matches).
 
-Because this is served from your API (not baked into static documentation), it stays in sync with the actual surface. When you add a parameter or deprecate an endpoint, the bootstrap context reflects it immediately.
+The best bootstrap context is served from the API itself, not maintained in separate documentation. When you add a parameter or deprecate an endpoint, the bootstrap reflects it immediately. A CLI that derives its help text from its command definitions gets this for free. An HTTP API that serves its onboarding context from the same source as its routing logic gets the same benefit.
 
-**Choose the right content type.** Not all bootstrap content serves the same purpose, and the response format should match. Endpoint schemas, parameter definitions, and enums are best served as JSON or via an OpenAPI spec — rigid structure that the agent can navigate deterministically. But workflow descriptions, heuristics, and "when to do X vs. Y" guidance are a different kind of content. For these, consider serving markdown (`Content-Type: text/markdown`). Markdown is a format LLMs are deeply fluent in — it saturates pre-training data, it's structured but flexible, and models can interpret it without special tooling. It's how they're used to receiving instructional content. An endpoint can return whatever content type it wants, and for bootstrap context, the best choice is often to mix approaches: JSON for what the agent needs to parse programmatically, markdown for what the agent needs to understand conceptually. The tradeoff is parsability vs. expressiveness — JSON is unambiguous but rigid, markdown is natural but requires interpretation.
-
-Keep it concise. This goes into a context window, so every token needs to earn its place. If your API surface grows, consider making the bootstrap hierarchical: a summary at the top level with links to deeper context per endpoint. The agent fetches what it needs rather than loading everything upfront — which starts to resemble HATEOAS (Hypermedia as the Engine of Application State), where API responses themselves include links to related resources and available actions.
+Keep it concise. If this goes into a context window, every token needs to earn its place. If your surface is large, consider making the bootstrap hierarchical: a summary at the top level with links to deeper context per area. The agent fetches what it needs rather than loading everything upfront — which is essentially HATEOAS (Hypermedia as the Engine of Application State), where responses themselves include links to related resources and available actions.
 
 ## Verifiable feedback loops
 
 The deeper investment is in making the API itself a learning surface. This is the insight from systems like Hornet: if you make the entire API surface verifiable, agents can learn to use it through interaction, the same way coding agents improve by compiling code and running tests.
 
-The analogy to coding is precise and useful. Treat your API like a development environment:
+The analogy to coding is precise and useful. Think of your API as a development environment:
 
-- **Configurations are source files** — structured, diffable, version-controlled.
-- **API validation is the compiler** — catches errors before they cause problems.
+- **Configurations are source files** — what the agent writes and submits.
+- **Validation is the compiler** — catches errors before they cause problems.
 - **Behavioral metrics are the tests** — verify that the system does what it should.
 - **Deployments are versioned rollouts** — reversible and auditable.
 
-This framing aligns with how frontier models are already trained. Model companies invest heavily in RL for coding because code is verifiable: write it, compile it, test it, observe the result, improve. The more your API surface resembles coding, the more naturally agents will learn to use it.
+This framing matters because it aligns with how frontier models are already trained. Model companies invest heavily in RL for coding because code is verifiable: write it, compile it, test it, observe the result, improve. The more your API surface resembles this loop — submit, validate, observe, adjust — the more naturally agents will learn to use it.
 
 ### Three levels of verification
 
-**Syntactic validation** is the simplest layer. Are the requests well-formed? Do the parameters have the right types? Does the schema validate? This is equivalent to checking whether code compiles. Frontier LLMs are already excellent at producing syntactically correct structured data, so this layer mostly catches minor mistakes. Define your API with an OpenAPI specification and return clear validation errors. This alone handles a large class of agent errors.
+**Syntactic validation** is the compiler. Are the requests well-formed? Do the parameters have the right types? Does the schema validate? Frontier LLMs are already excellent at producing syntactically correct requests, so this layer mostly catches minor mistakes. But when it does catch something, the error message matters enormously — it's the difference between the agent self-correcting in one retry or flailing for five.
 
-**Semantic validation** catches problems that syntax checking misses. Some parameter combinations don't make sense together. Some settings conflict. Some configurations are individually valid but collectively broken. Model these constraints explicitly and return detailed, actionable error messages when they're violated. Don't just say "invalid configuration" — say which settings conflict, why they can't coexist, and what the valid alternatives are. This is where agents do most of their learning. A detailed semantic error message often contains everything the agent needs to self-correct in a single retry.
+**Semantic validation** catches problems that syntax checking misses. Some parameter combinations don't make sense together. Some settings conflict. Some configurations are individually valid but collectively broken. Model these constraints explicitly. Don't just say "invalid configuration" — say which settings conflict, why they can't coexist, and what the valid alternatives are. This is where agents do most of their learning. A good semantic error often contains everything the agent needs to self-correct in a single retry.
 
-**Behavioral validation** is the hardest and most valuable layer. Does the API actually produce good results? Are the outputs ranked correctly? Is the performance acceptable? This requires making quality metrics observable. Return metadata that lets the agent evaluate outcomes: relevance scores, result counts, latency, confidence indicators, and signals about whether the query itself might be the problem (too broad, too narrow, no matches for these filters). The agent needs enough information to answer "should I try again differently?" from a single response.
+**Behavioral validation** is the hardest and most valuable layer. Does the API actually produce good results? This requires making quality metrics observable. Return metadata that lets the agent evaluate outcomes: relevance scores, result counts, latency, confidence indicators, signals about whether the query itself might be the problem (too broad, too narrow, no matches for these filters). The agent needs enough information to answer "should I try again differently?" from a single response.
 
 ## Response design for agents
 
 The response is the primary teaching interface. Every response should carry enough information for the agent to decide what to do next without consulting external documentation.
 
-**Structured errors over status codes.** A 400 status code tells the agent almost nothing. A structured error body that identifies the invalid field, explains why it's invalid, and suggests a correction teaches the agent how to fix the problem. Invest heavily in error message quality — for agents, your error messages *are* your documentation.
+**Informative errors over codes.** A 400 status code tells the agent almost nothing. An exit code of 1 tells it even less. What matters is whether the error response carries enough information for the agent to understand the failure and correct it. Compare a CLI that says `Error: unknown command "subdomain"` and exits, to one that says the same thing and then prints every valid command grouped by category. Same error, completely different learning outcome. The format doesn't matter — prose, plain text tables, whatever — but the information content does. Invest heavily in error message quality. For agents, your error messages *are* your documentation.
 
-**Rich metadata on success.** Don't just return results. Return signals the agent can reason about. For a search API: how many total matches exist, what the score distribution looks like, whether filters significantly narrowed the result set, what related queries might yield. These signals turn a black box into something the agent can understand and optimize.
+Consider the Wrangler CLI: run a nonexistent subcommand and it tells you the command doesn't exist, then prints the full command tree organized by category. That single error response is both a correction ("this isn't valid") and a bootstrap ("here's everything that is"). An agent recovers in one retry. This is the pattern to aim for regardless of interface type.
 
-**Deterministic behavior.** For the same inputs, return the same outputs. Agents iterate by changing one thing at a time and observing the difference. If the API is nondeterministic, the agent can't distinguish between "my change helped" and "random variation." Where true determinism isn't possible, make the sources of variation explicit.
+**Rich metadata on success.** Don't just return results. Return signals the agent can reason about. For a search API: how many total matches exist, what the score distribution looks like, whether filters significantly narrowed the result set, what related queries might yield. For a CLI: exit codes that distinguish between "no results" and "error," output that shows what was actually done, not just that it succeeded. These signals turn a black box into something the agent can understand and optimize.
 
-**Idempotent operations.** Agents retry frequently. Design mutation operations to be safely repeatable. Use idempotency keys where appropriate. An agent that can't safely retry is an agent that can't learn through iteration.
+**Deterministic behavior.** Agents iterate by changing one thing at a time and observing the difference. If the API is nondeterministic, the agent can't distinguish between "my change helped" and "random variation." For the same inputs, return the same outputs. Where true determinism isn't possible, make the sources of variation explicit so the agent can account for them.
+
+**Safe to retry.** Agents retry frequently — it's how they learn. Design mutation operations to be safely repeatable. Use idempotency keys where appropriate. An agent that can't safely retry is an agent that can't learn through iteration.
 
 ## The self-reinforcing loop
 
@@ -73,9 +73,9 @@ This is only possible when the API provides enough observability for the agent t
 
 Designing for agents doesn't require reinventing API design. It requires shifting emphasis toward properties that let machine consumers learn and improve through interaction:
 
-1. **Provide bootstrap context** at a well-known path so agents start with a mental model rather than searching blindly.
-2. **Make the API surface verifiable** at the syntactic, semantic, and behavioral levels so agents can self-correct through iteration.
-3. **Design responses as teaching interfaces** with structured errors, rich metadata, and enough signal for the agent to decide its next action.
+1. **Provide bootstrap context** so agents start with a mental model rather than discovering the surface through trial and error.
+2. **Make the surface verifiable** at the syntactic, semantic, and behavioral levels so agents can self-correct through iteration.
+3. **Design responses as teaching interfaces** with informative errors, rich metadata, and enough signal for the agent to decide its next action.
 4. **Enable self-reinforcing loops** by making quality metrics observable and configurations adjustable, so agents can optimize their own usage over time.
 
 The APIs that thrive in an agent-driven world won't just be well-documented — they'll be learnable through use.
