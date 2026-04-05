@@ -96,6 +96,18 @@ Production server:    pull image -> run container
 
 **New problems:** You now have potentially many containers on one or more machines. Who decides which containers run where? If a container dies, who restarts it? If you need three copies for redundancy, who ensures exactly three are running? If containers need to talk to each other, how do they find each other? You've solved the isolation and packaging problems but created an orchestration problem.
 
+### The road not taken: Nix
+
+Containers solved the reproducibility problem by brute force — ship the entire filesystem. But there's an alternative approach that solves it more rigorously by attacking the root cause: if builds are non-deterministic, make them deterministic.
+
+**Nix** is a package manager built on a single idea: a package is a pure function of its inputs. The source code, every dependency, the compiler, the compiler flags — all of it gets hashed together, and the build output is stored at a path derived from that hash: `/nix/store/abc123-python-3.11.4/`. If any input changes, the hash changes and you get a different path. Two packages that need different versions of the same library coexist at different store paths. Nothing is global, nothing is mutable, nothing conflicts. You get the dependency isolation of Stage 3 (multiple things on one machine without stomping on each other) without VMs or containers — just careful path management.
+
+This scales upward. **NixOS** applies the same principle to an entire operating system: packages, services, users, kernel modules, all declared in a single expression and built deterministically from that declaration. It's Stage 2 (configuration management) done with a rigor that Ansible and Chef couldn't achieve — instead of converging a mutable system toward a desired state, you build the entire system from scratch from its specification. Rollback means booting the previous generation, which is still sitting in the Nix store.
+
+The mainstream didn't go this way. Containers won because they were conceptually simpler ("ship a tarball of the filesystem"), worked with existing tools and mental models, and had Docker's excellent developer experience. Nix demands a fundamentally different mental model — functional programming applied to system configuration — and has a notoriously steep learning curve. The trade-off is real: Nix solves reproducibility more rigorously (bit-for-bit identical builds, no "but it works in the container I built yesterday"), but containers were good enough for most organizations and far easier to adopt.
+
+Where Nix shows up in practice today is often *alongside* containers rather than instead of them. You use Nix to build the container image — guaranteeing the image contents are reproducible and minimal — then deploy the image through the normal container/orchestration pipeline from Stage 5 onward. It slots in at the "build" step rather than replacing the runtime story.
+
 ---
 
 ## Stage 5: Multiple Machines
