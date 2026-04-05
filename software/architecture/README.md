@@ -54,7 +54,7 @@ Output: Unified overview + Mermaid diagram
 **Example:**
 ```bash
 # Prepare prompt with repo list
-cat prompts/architecture/service.md | sed 's|\[LIST GOES HERE\]|/repos/api\n/repos/worker\n/repos/gateway|' > prompt.txt
+cat software/architecture/service.md | sed 's|\[LIST GOES HERE\]|/repos/api\n/repos/worker\n/repos/gateway|' > prompt.txt
 
 # Run with Claude Code or similar
 claude -s "$(cat prompt.txt)"

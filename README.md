@@ -1,74 +1,40 @@
-# Context Repository
+# Context Library
 
-A curated collection of prompts, instructions, and concepts for LLM interactions.
-
-## Purpose
-
-This repository provides reusable building blocks for working with LLMs (Claude, ChatGPT, etc.). It separates concerns into three categories based on how and when context is used.
+Reusable context for LLM interactions, organized by topic.
 
 ## Structure
 
-### `prompts/`
-Single-purpose transformations for discrete input → output tasks.
-
-- **What:** "Do this specific thing right now"
-- **When:** One-shot tasks, workflow building blocks
-- **Examples:** Clean a transcript, summarize a meeting, extract requirements
-
-Categories: interviews, modeling, meetings, learning, synthesis, activity, meta
-
-### `instructions/`
-Multi-turn behavioral context that shapes how agents work across entire conversations.
-
-- **What:** "Who you are and how you approach problems"
-- **When:** Applied once at conversation start (system prompt layer)
-- **Examples:** Search methodology, agent personality, context engineering principles
-
-Categories: agent, chat, specialized
-
-### `concepts/`
-Universal reference knowledge that applies anywhere.
-
-- **What:** Stable, canonical knowledge for domains or methods
-- **When:** Fill gaps in LLM knowledge, establish shared understanding
-- **Examples:** Context engineering principles, domain concepts, technical methods
-
-Categories: ai, domains, software
-
-## Quick Start
-
-### Using Prompts
-```bash
-# One-shot transformation
-cat transcript.json | llm -s "$(cat prompts/meetings/clean_teams_json_transcript.md)"
-
-# Chain prompts
-cat raw.json | llm -s "$(cat prompts/meetings/clean_teams_json_transcript.md)" > clean.txt
-cat clean.txt | llm -s "$(cat prompts/meetings/summarize_transcript.md)" > summary.txt
+```
+ai/                 AI systems, agents, context engineering
+  rl/               Reinforcement learning for LLMs
+software/           Code quality, process, standards
+  architecture/     Codebase exploration mappers
+  modeling/         Domain modeling (AND/OR notation, types)
+project/            Backlogs, prioritization
+interviews/         Structured discovery conversations
+writing/            Prose style, comprehension testing, flashcards
+meetings/           Transcript cleaning and summarization
 ```
 
-### Using Instructions
+`generate_deep_research_spec.md` lives at root -- it's a domain-agnostic meta-tool.
+
+## Usage
+
+Everything here is context you feed to LLMs. Grab what's relevant to what you're working on.
+
 ```bash
-# Set up agent behavior
-cat instructions/agent/core.md > system_prompt.txt
+# Single file
+cat software/de-slop.md | llm -s "$(cat -)" < diff.patch
+
+# Combine context
+cat ai/context_engineering.md ai/hooks.md | llm -s "$(cat -)"
+
+# Pipeline
+cat transcript.json | llm -s "$(cat meetings/clean_teams_json_transcript.md)" | llm -s "$(cat meetings/summarize.md)"
 ```
 
-### Using Concepts
-```bash
-# Add domain knowledge to conversation
-cat concepts/ai/context_engineering_draft.md
-```
+## Principles
 
-## Design Principles
-
-1. **Separation of concerns** - Prompts do tasks, instructions shape behavior, concepts provide knowledge
-2. **Composability** - Mix and match pieces for different workflows
-3. **Self-contained** - Each file works independently
-4. **Quality over quantity** - Better to have fewer, well-crafted prompts than many mediocre ones
-
-## See Also
-
-Each directory has its own README with detailed usage:
-- [prompts/README.md](prompts/README.md)
-- [instructions/README.md](instructions/README.md)
-- [concepts/README.md](concepts/README.md)
+- **Organized by topic** -- find things by what you're working on, not by abstract type
+- **Self-contained** -- each file works independently
+- **Quality over quantity** -- fewer well-crafted files beat many stubs
