@@ -27,12 +27,15 @@ Language consistency: node labels, titles, and edge labels must match the user's
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{Diagram Title}}</title>
 <style>
   html, body { margin: 0; padding: 0; background: #F2EFE8;
                font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
-  .wrap { display: flex; justify-content: center; padding: 40px 20px; }
-  svg   { width: 100%; max-width: 1200px; height: auto; }
+  body  { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .wrap { width: 100%; display: flex; justify-content: center;
+          padding: clamp(12px, 3vw, 40px) clamp(8px, 2vw, 24px); box-sizing: border-box; }
+  svg   { width: 100%; max-width: min(100%, 1600px); height: auto; }
 
   .title        { font-size: 32px; fill: #1F1F1C; font-weight: 700; text-anchor: middle; }
   .panel-label  { font-size: 15px; fill: #5F5A54; font-weight: 500; }
@@ -117,8 +120,9 @@ These are the rules a blind SVG author gets wrong. Follow them mechanically.
 2. **Cross-panel arrows route in the gap between panels.** Compute the midpoint of the empty space between two panels. The vertical leg of any cross-panel edge belongs there, not inside either panel.
 3. **Minimum 80px horizontal and 60px vertical gap** between adjacent node edges. Minimum 160px gap between panels when cross-panel routing is needed.
 4. **Generous canvas.** Default viewBox is 1200×700+. Better to have empty space at the bottom than crammed nodes.
-5. **Snap coordinates to multiples of 10.** Makes positions predictable and alignment automatic.
-6. **Nodes: 180–240 px wide, 70–90 px tall.** Keep sizes consistent within a diagram.
+5. **Match viewBox to content aspect ratio.** Don't pad a 1200×400 diagram out to 1200×700 — the extra 300px becomes dead space on every screen. Pick a viewBox that hugs the content bounds (plus modest margins). For diagrams that must read well on phones, prefer squarer ratios (e.g., 1000×900) over wide landscape (1400×500).
+6. **Snap coordinates to multiples of 10.** Makes positions predictable and alignment automatic.
+7. **Nodes: 180–240 px wide, 70–90 px tall.** Keep sizes consistent within a diagram.
 
 ## Label placement (the hard part)
 
@@ -153,6 +157,14 @@ Labels floating *next to* an edge look like afterthoughts. Labels *centered on* 
 
 Prefer short noun/verb-phrase labels. Never full sentences inside nodes.
 
+## Responsiveness
+
+The scaffold is responsive by default: the `<meta name="viewport">` tag lets mobile browsers render at device width, `viewBox` + `preserveAspectRatio="xMidYMid meet"` (SVG's default) scales the diagram uniformly, and fluid `clamp()` padding tightens edge gutters on small screens. Font sizes are in SVG user units, so they scale with the diagram automatically — do not set CSS font-size media queries on SVG text.
+
+Do **not** try to reflow node positions with CSS media queries. Repositioning SVG elements per breakpoint is fragile and defeats `viewBox` scaling. If a diagram must work well on a phone, pick a squarer `viewBox` at authoring time instead.
+
+Do **not** set a fixed pixel `width` or `height` attribute on the `<svg>` element — rely on `viewBox` plus the CSS `width: 100%` rule in the scaffold.
+
 ## Core style principles
 
 1. Colors encode meaning, not decoration.
@@ -167,6 +179,9 @@ Prefer short noun/verb-phrase labels. Never full sentences inside nodes.
 Before writing the file, verify mentally:
 
 - [ ] Canvas background `#F2EFE8` set on body
+- [ ] `<meta name="viewport" content="width=device-width, initial-scale=1">` present
+- [ ] `<svg>` has no fixed pixel `width`/`height` attribute — uses `viewBox` + CSS
+- [ ] `viewBox` aspect ratio hugs the actual content bounds
 - [ ] All panel borders dashed, unfilled
 - [ ] All arrows use open chevron markers
 - [ ] No two arrows share the same centerline
