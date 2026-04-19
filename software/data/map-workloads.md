@@ -55,33 +55,54 @@ Map-only workloads are the best possible fit for stateless elastic compute: the 
 
 ## 3. The producer–consumer convergence
 
-The key piece of physics that makes the whole thing viable: **for CPU-bound analytical scans, streaming from object storage and having the data already in RAM land at roughly the same wall time.** Not because the network is as fast as DRAM — it isn't, by 10–100× — but because the bottleneck is somewhere else.
+The key piece of physics that makes the whole thing viable: **for most real analytical scans, streaming from object storage and having the data already in RAM land at roughly the same wall time.** Not because the network is as fast as DRAM — it isn't, by 10–100× — but because the CPU is doing enough work per byte that the raw bandwidth gap stops mattering.
 
-A scan pipeline is a classic producer–consumer system. Storage produces bytes; the CPU pipeline consumes them. In steady state, pipeline throughput is `min(producer_rate, consumer_rate)`. If the producer feeds at or above the rate the consumer processes, the consumer binds, and wall time converges to CPU-bound time regardless of where the bytes came from.
+### The compute chain
 
-The raw numbers look hopeless at first:
+Every byte read from object storage passes through a fixed chain of CPU work before a rule can be evaluated:
 
-| layer | bandwidth per node |
-|---|---|
-| DDR5 DRAM | 300–500 GB/s per socket |
-| NVMe SSD | 3–7 GB/s |
-| Object storage from a cloud VM | 1–25 GB/s (instance-dependent) |
+```
+  [ network ] --compressed bytes--> [ decompress ] --> [ decode ] --> [ rule kernel ] --> [ emit annotation ]
+                                    LZ4/Snappy/ZSTD     RLE, dict,        per-row
+                                                        Parquet encoding  predicates
+```
 
-RAM is an order of magnitude faster than the fastest network, two orders faster than typical. Yet the convergence holds for most real analytical work. Four things close the gap:
+Each step of the chain does CPU work proportional to the bytes flowing through it. Cores stay pegged near 100 % utilisation whenever the pipeline is fed, because every byte that arrives needs to be decompressed, decoded, and evaluated — there is no idle CPU waiting for bytes. The only way to avoid the chain is to answer the query entirely from metadata (e.g. `COUNT(*)` from row-group statistics).
 
-1. **CPU work per byte.** A decode-filter kernel typically processes 1–3 GB/s of logical data per core on modern hardware. Once the workload does anything non-trivial per row — a geometry test, a regex, a date parse — per-core throughput drops further. At those rates a multi-GB/s S3 feed has slack, CPU is the binding constraint, and wall time equals the RAM wall time.
-2. **Compression.** Parquet typically compresses 3–10×. A 3 GB/s network delivery becomes an effective 10–30 GB/s of logical data. Modern codecs (LZ4, Snappy, ZSTD-fast) are cheap enough to be a net win.
+### Busy vs. binding
+
+"CPU is busy" and "CPU is the bottleneck" are two different statements. The first is about utilisation: cores are running instructions. The second is about whether adding more CPU reduces wall time. These come apart:
+
+- **Network-narrower regime**: network delivers bytes slower than the compute chain could process them. Cores are still at ~100 % util (decompressing and decoding whatever arrives), but faster CPU wouldn't help — the NIC is the narrow pipe.
+- **Compute-narrower regime**: the compute chain is slower than the network could deliver. Cores at ~100 % util, and faster CPU *would* reduce wall time.
+- **Balanced regime**: the two are within a factor of two of each other. Small changes in rule complexity or network tuning flip which binds.
+
+On our 8 × c7g.4xlarge fleet, Workload A sat in the balanced regime: the single-AND variant skewed network-narrower (14.85 s wall, 12.4 GiB/s wire aggregate = ~83 % of NIC burst budget), while the 1000-predicate variant skewed compute-narrower (55.55 s wall, kernel time dominating). Same fleet, same data, different rule complexity, different binding edge.
+
+### Why the RAM-vs-S3 gap closes
+
+RAM is an order of magnitude faster than the fastest network, two orders faster than typical. Yet the convergence holds for most real analytical work, because four effects close the raw bandwidth gap:
+
+1. **CPU work per byte.** The compute chain runs at 1–5 GiB/s of logical data per core on modern hardware for non-trivial rule kernels. Aggregate across 16 cores and network and compute meet within a factor of a few — not the 10–100× raw bandwidth gap.
+2. **Compression.** Parquet typically compresses 3–10×. A 3 GB/s network delivery becomes an effective 10–30 GB/s of logical data after decompress.
 3. **Column pruning.** If the rules need three of fifty columns, only ~6 % of the bytes are fetched.
-4. **Predicate pushdown and file skipping.** Parquet row-group min/max statistics let the reader skip entire row groups whose ranges exclude all predicates. Iceberg and Delta add table-level file skipping. In practice, often 1–10 % of the nominal dataset is actually touched.
+4. **Predicate pushdown and file skipping.** Parquet row-group min/max statistics let the reader skip entire row groups whose ranges exclude all predicates. Iceberg and Delta add table-level file skipping.
 
-When the convergence *doesn't* hold:
+A RAM-cached input (Spark `.cache()`, Arrow in-memory tables, DuckDB temp tables) skips the decompress + decode steps of the compute chain; the rule kernel still runs. So the RAM-vs-S3 delta isn't bounded by the network-vs-DRAM bandwidth ratio — it's bounded by **how much of total wall time decompress + decode accounted for**.
 
-- **Cheap scans.** A `SELECT COUNT(*)` or a vectorised filter on already-thin data runs at near-memory-bandwidth speed. The network binds, RAM wins by a large factor.
-- **Small datasets.** First-byte latency (20–200 ms per GET) dominates steady-state throughput. You never reach the regime where the argument applies.
-- **Multi-pass workloads.** ML training epochs pay the network cost on every pass. This is why worker-NVMe caches and `.cache()` exist.
-- **Random access.** Point lookups at small block sizes never reach steady state.
+- If the rule kernel dominates the compute chain (our 1000-predicate case — filter kernel is ~60 s of CPU work across 128 cores), RAM ≈ S3. Both pay the kernel cost; the decompress + decode savings are marginal in absolute terms.
+- If decompress + decode dominate (our single-AND case — filter kernel is ~0.1 s total), RAM wins by the decode-to-total ratio. Not 100× — maybe 3–5× — because most of the single-AND wall time was network, and RAM doesn't help with network if the network was already the narrow pipe.
+- If the rule is answerable from metadata (`COUNT(*)`), neither compute chain nor network is touched meaningfully. RAM still wins by whatever the metadata-fetch latency was, but the scan architecture isn't really the right thing to be reasoning about.
 
-A map-only validation pipeline fits the "convergence holds" regime cleanly when the rules do meaningful per-row work. For rules as cheap as a double comparison (our Workload A), the picture is different — we measured 18.48 GiB/s on 8 × c7g.4xlarge at 1000 predicates per row, binding on CPU; the same fleet's NIC aggregate ceiling is around 15 GiB/s. For that specific kernel the CPU and network ceilings are within a factor of two of each other, which means small tuning choices shift the binding worker. For anything heavier (geometry operations, string validation, semantic rules) CPU wins handily and the network edge disappears from the wall-time budget.
+### When the convergence breaks
+
+The argument above assumes a steady-state scan of a corpus with non-trivial per-row rule work. It fails in three specific situations:
+
+- **Small datasets.** First-byte latency (20–200 ms per GET) dominates steady-state throughput. You never reach the regime where the compute-chain/network balance matters.
+- **Multi-pass workloads.** ML training epochs pay the network cost on every pass. This is why worker-NVMe caches and `.cache()` exist — to amortise the first-pass network cost across later passes.
+- **Random access.** Point lookups at small block sizes never reach steady state. The compute chain is underfed and the network is wasted on per-request overhead.
+
+For a map-only validation pipeline on a well-sized fleet, none of those usually applies. Wall time is determined by the compute chain and the network, their relative rates, and which part of the compute chain dominates.
 
 ### The write edge
 
