@@ -45,6 +45,60 @@ Queues, buffers, retries, caches, connection pools, thread pools, logs, and metr
 
 For services, p99 may matter more than mean latency. For batch, total cost or wall-clock may matter more than p99. For real-time systems, deadline misses matter more than throughput.
 
+### 6. Prefer removing work over making unnecessary work cheaper
+
+The largest performance wins usually come from the highest layer that can avoid work entirely. An application change might remove a database query, skip serialization, batch remote calls, avoid an allocation-heavy path, or use a better algorithm. A storage-device tuning may make I/O faster, but if the application still performs unnecessary queries, most of the cost has already been accepted higher in the stack.
+
+Tune as high as possible; observe as low as necessary.
+
+---
+
+## Where to tune vs where to observe
+
+Performance tuning is usually most effective closest to where the work is created. For application-driven workloads, that often means the application itself: change the algorithm, reduce queries, avoid requests, batch operations, or stop moving data that does not need to move.
+
+That does not mean observation should only happen at the application layer. The best evidence often comes from lower layers: CPU profiles, system-call counts, filesystem statistics, block-device latency, network retransmits, database execution plans, lock waits, and cache-miss counters. A slow query may be caused by application behavior, but understood through database and operating-system measurements.
+
+The rule:
+
+```text
+Tune where work can be eliminated or reshaped.
+Observe wherever the cost becomes visible.
+```
+
+| Layer | What tuning can eliminate or reduce | Typical win shape | Common tradeoff |
+|---|---|---|---|
+| **Product / workload** | Features, requests, freshness requirements, consistency requirements, data retained | Can be enormous because the work disappears | Requires product or business decision |
+| **Application** | Algorithms, database queries, RPCs, serialization, allocations, duplicate work, request batching | Often the largest engineering win | Requires code change and correctness testing |
+| **Query / database** | Scans, joins, locks, indexes, materialization, transaction scope | Large when data access is the bottleneck | Storage, write amplification, freshness, migration cost |
+| **Runtime** | GC pressure, allocation overhead, thread scheduling, async behavior, JIT behavior | Medium to large when runtime overhead is visible | Memory footprint, complexity, pause behavior |
+| **System-call / I/O API** | Syscall count, synchronous waits, copying, small reads/writes | Medium when boundary crossing or blocking dominates | More complex flow control and error handling |
+| **Filesystem** | Record size, journaling behavior, cache behavior, readahead, metadata overhead | Often workload-specific; large for I/O-heavy systems | May improve scans while hurting random I/O, or vice versa |
+| **Storage device** | Queue depth, RAID layout, disk type, device cache, IOPS/bandwidth limits | Often percentage wins unless storage is the dominant bottleneck | Cost, durability semantics, operational complexity |
+| **Network** | Buffer sizes, batching, compression, connection reuse, routing, placement | Large for chatty or bandwidth-heavy systems | Memory, CPU, locality, fairness, cross-zone cost |
+| **Kernel / hardware** | Scheduler behavior, NUMA placement, huge pages, interrupts, CPU frequency, kernel bypass | Important near hardware limits | Portability, complexity, isolation, debuggability |
+
+This table is not an argument against low-level tuning. Low-level tuning is essential when the measured bottleneck is low-level. The warning is about leverage: if a higher layer can avoid work, that usually beats optimizing the lower layer that executes it.
+
+Examples:
+
+- Removing an unnecessary query can beat tuning the database buffer cache.
+- Returning fewer columns can beat increasing network buffers.
+- Avoiding JSON serialization can beat optimizing syscalls.
+- Changing a full scan into an indexed lookup can beat upgrading disks.
+- Reducing fanout can beat tuning downstream connection pools.
+- Doing one pass over data can beat caching repeated passes.
+
+Use lower-layer tuning when one of these is true:
+
+- the higher layer is already doing the necessary minimum work;
+- the workload contract prevents changing the higher-level behavior;
+- the measured bottleneck is genuinely in the lower layer;
+- the lower-layer change is simpler, safer, or more reversible than an application change;
+- the same lower-layer improvement benefits many workloads at once.
+
+Avoid lower-layer tuning when it only makes waste faster. If the application reads 100 columns to use 3, the first fix is projection discipline, not a faster disk. If a service makes 20 serial RPCs it does not need, the first fix is request shape, not TCP buffers. If a job scans the same data 50 times, the first fix is scan sharing, not more workers.
+
 ---
 
 ## Glossary and terminology
