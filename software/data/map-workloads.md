@@ -4,8 +4,6 @@
 
 This document is a reference for a specific shape of computation: evaluating a bounded set of per-row rules over a large columnar corpus, with no reduce phase and no cross-row dependency. The motivating example throughout is **data validation** — take a batch of input records, evaluate a set of declarative rules against each row, and emit per-row annotations (valid / invalid / which rules failed) for downstream consumers. The same architectural story applies to any map-only per-row transform with sparse or compact output.
 
-For the broader 3×3 matrix (three architectures × three workload shapes) see `docs/project.md`. For what *streaming* means at different levels of the stack — distributed systems, incremental consumption, memory hierarchy — see `docs/reference.md`. Experiment narrative, measured numbers, and open questions live in `notes.md`.
-
 ---
 
 ## 1. Scope
@@ -128,7 +126,7 @@ A map-only pipeline has this shape:
 
 Throughput equals `min` across layers. The **binding worker** is the layer that currently caps throughput; tuning moves the bottleneck from one layer to the next, not free-fall improvement across the board. A well-designed system makes the binding worker observable, so you know which layer to feed next.
 
-The full catalog of parallelism axes — ILP, SIMD, multi-thread, pipeline, I/O concurrency, distributed data — is in `docs/project.md` and not re-derived here. What follows is the distilled ceilings lookup, in the order they appear as scale grows.
+The relevant parallelism axes are ILP, SIMD, multi-threading, pipeline parallelism, I/O concurrency, and distributed data parallelism. What follows is the distilled ceilings lookup, in the order they appear as scale grows.
 
 ### Four scale regimes
 
@@ -204,8 +202,6 @@ A hand-rolled pipeline in this project ran Workload A + 1000-predicate stress in
 
 This 5–6× number is a distilled data point, not a universal law. It's the cost for *this specific workload shape*: map-only, CPU-heavy, with rule-specific optimisations that live below the framework's abstraction. On workloads where the framework actually earns its keep — shuffles, fault tolerance, SQL surface, ecosystem interop — the ratio shifts or inverts. Map-only validation needs none of the things the framework sells, so the full tax lands on the wall time.
 
-For experimental detail and per-run measurements, see `notes.md`.
-
 ---
 
 ## 7. When to reach for this architecture
@@ -223,7 +219,7 @@ When to *not* reach for this architecture:
 - **Tiny datasets** where first-byte object-storage latency dominates steady-state throughput. Single-node batch processing on local disk or memory is faster.
 - **Random point lookups.** A key-value store or an indexed columnar engine is the right shape.
 - **Multi-pass iterative algorithms** — ML training, fixed-point graph queries. Budget for a local cache of decoded data and a different architecture.
-- **Cross-row-dependent rules.** Spatial self-joins, nearest-neighbour, density tests, deduplication. These are wide transformations; see the C column of `docs/project.md`.
+- **Cross-row-dependent rules.** Spatial self-joins, nearest-neighbour, density tests, deduplication. These are wide transformations rather than map-only transformations.
 - **Dense per-row outputs** where the write edge is within a factor of the read edge. The design becomes symmetric and the "network storage ≈ RAM" convergence applies to reads and writes independently.
 
 The frame generalises beyond validation. Any map-only per-row transform with sparse or compact output fits: classification scoring at inference time, feature extraction, schema migration, PII redaction, format conversion with transformation. Validation is where the shape shows up most often, because the rule set is usually declarative and the output is usually sparse — two properties that make the match particularly clean.

@@ -1,6 +1,6 @@
 # Observability Best Practices
 
-A practitioner's guide to instrumenting, monitoring, and debugging production systems. Each practice states what to do, why, and what tradeoff it makes. Companion to [progression.md](progression.md), which covers the history and conceptual foundations.
+A practitioner's guide to instrumenting, monitoring, and debugging production systems. Each practice states what to do, why, and what tradeoff it makes. This document is intended to stand on its own as an operational reference.
 
 ---
 
