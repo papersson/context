@@ -458,6 +458,10 @@ The common failure is paying permanent complexity for a bottleneck that was neve
 
 ## How to use this cookbook during a change
 
+Before tuning knobs, identify the load regime. A knob that helps in the linear region can be irrelevant at saturation and harmful during overload collapse. Increasing queue depth may smooth bursts before the knee; after saturation it may only hide overload and worsen p99. Increasing retries may improve success under rare transient failures; during collapse it may amplify load and reduce throughput.
+
+Also distinguish load problems from architecture problems. If all relevant resources are busy and adding capacity helps, tune capacity, admission, or efficiency. If requests queue while capacity sits idle, a knob may not help; the real fix is usually removing serialization, contention, imbalance, or coordination.
+
 Before changing a knob, write down:
 
 1. **Workload shape.** Is it latency-sensitive, throughput-oriented, batch, interactive, random-access, streaming, read-heavy, write-heavy, or coordination-heavy?

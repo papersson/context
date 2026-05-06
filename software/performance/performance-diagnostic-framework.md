@@ -116,6 +116,106 @@ After characterization, most of the numbers will be unremarkable. A loop that re
 
 The dominant bottleneck is what is **consuming most of the cycles that are not doing useful work**. Top-down microarchitectural analysis attributes every cycle to one of four buckets, and this is almost always the first cut.
 
+### Load, architecture, and scalability
+
+Before drilling into CPU counters, separate three questions that are often confused:
+
+1. **Is the offered load too high for the current capacity?**
+2. **Is the architecture preventing available capacity from being used?**
+3. **How does the system behave as load, resources, data size, or tenant count increases?**
+
+A queue by itself does not answer these questions. A queue can mean legitimate overload, or it can mean work is stuck behind a single-threaded stage while the rest of the machine is idle. The diagnosis changes the intervention.
+
+#### Load problems vs architecture problems
+
+| Type | Meaning | Typical signal | Better first intervention |
+|---|---|---|---|
+| **Load problem** | The system uses available capacity reasonably, but demand exceeds that capacity | All relevant workers or resources are busy; queues grow; adding equivalent capacity helps | Add capacity, autoscale, shed load, rate-limit, reduce demand, improve per-unit efficiency |
+| **Architecture problem** | Capacity exists but cannot be used because work is serialized, contended, imbalanced, or misrouted | Some resources are saturated while others are idle; scaling gives little benefit; queues form behind a narrow point | Remove serialization, shard, parallelize, rebalance, reduce coordination, change the request/data path |
+
+Examples:
+
+- **Load problem:** all CPU cores are busy doing useful work, the request queue grows, and adding another identical instance roughly doubles throughput.
+- **Architecture problem:** one CPU core is saturated while other cores are idle because the hot path is single-threaded.
+- **Architecture problem:** many worker threads exist, but all wait on one lock, one connection pool, one database row, or one hot shard.
+- **Load problem:** all database replicas are saturated under legitimate read traffic, with no single hot partition.
+- **Architecture problem:** one shard is saturated while other shards are idle because the partition key is skewed.
+
+A practical test: add capacity in the dimension you believe is limiting. If throughput rises roughly proportionally and latency falls, you were capacity-limited. If throughput barely moves, you have an architectural bottleneck or a different shared resource downstream.
+
+#### Throughput vs load
+
+As offered load increases, throughput usually follows a curve with four regions:
+
+| Region | What happens | Interpretation |
+|---|---|---|
+| **Linear region** | Throughput rises roughly one-for-one with offered load; latency is stable | The system has spare capacity |
+| **Knee** | Throughput stops rising linearly; latency and queueing begin rising faster | Contention or queueing has started to matter |
+| **Saturation** | A resource reaches effective capacity; more offered load mostly waits | The system is at or beyond safe operating capacity |
+| **Collapse** | Throughput falls as load increases | Overload overhead exceeds useful work: retries, context switches, lock contention, GC, cache/coherence traffic, timeout churn |
+
+The knee matters more than the theoretical maximum. Production systems should usually operate before the knee, not at the saturation point. A system can have good average throughput while user-visible p99 latency is already failing.
+
+Measure the full curve, not one point:
+
+- offered load
+- completed throughput
+- p50, p95, p99, and max latency
+- queue length and age of oldest queued item
+- utilization and saturation of each major resource
+- error, timeout, and retry rates
+- context switches, GC pauses, lock waits, or other overload overheads
+
+Use open-loop load generation when possible. Closed-loop clients often hide overload because slow responses reduce the rate at which the client sends new work.
+
+#### Latency vs load
+
+Latency often degrades before throughput plateaus. As utilization approaches saturation, queueing delay grows nonlinearly. This is why “CPU is only 70%” is not a universal safety signal: the saturated resource may be a lock, thread pool, shard, downstream service, disk queue, or p99 dependency rather than aggregate CPU.
+
+For services, plot latency percentiles against offered load. The useful capacity limit is often the load at which p99 violates the objective, not the load at which throughput reaches its maximum.
+
+#### Throughput vs resources
+
+Scalability also means asking what happens when resources are added: threads, cores, instances, disks, partitions, GPUs, or database replicas.
+
+| Curve | Meaning | Common cause |
+|---|---|---|
+| **Linear** | Added resources become useful work | Work is independent and no shared resource is saturated |
+| **Sublinear** | Added resources help, but less than proportionally | Coordination, scheduling overhead, cache/memory pressure, partial serialization |
+| **Plateau** | Added resources do not materially help | A fixed bottleneck dominates: database, lock, memory bandwidth, network, hot shard |
+| **Regression** | Added resources make throughput worse | Contention, context switching, coherence traffic, retry storms, cache thrash |
+| **Superlinear** | Added resources help more than proportionally | Usually a working-set/cache effect; possible but verify carefully |
+
+Examples:
+
+- Add threads and throughput plateaus: memory bandwidth may be saturated.
+- Add cores and throughput regresses: lock contention or false sharing may dominate.
+- Add application instances and p99 worsens: the database or downstream service may be saturated.
+- Add partitions and throughput improves: the original design was hot-shard-limited.
+- Add memory and throughput jumps: the working set may now fit in cache or RAM rather than spilling.
+
+#### Types of scalability
+
+Never say “the system is scalable” without naming the scaling dimension and the metric.
+
+| Scalability type | Question |
+|---|---|
+| **Load scalability** | What happens as offered traffic increases? |
+| **Resource scalability** | What happens as we add cores, threads, nodes, disks, GPUs, partitions, or replicas? |
+| **Data scalability** | What happens as dataset size, index size, or working set grows? |
+| **Tenant scalability** | What happens as users, tenants, keys, shards, connections, or topics grow? |
+| **Geographic scalability** | What happens as clients, replicas, and data spread across zones or regions? |
+| **Operational scalability** | Can humans still deploy, debug, secure, and cost-manage the system as it grows? |
+
+A complete scalability claim names:
+
+```text
+scaling input: load, resources, data size, tenants, geography, operations
+measured output: throughput, latency, p99, cost, error rate, recovery time
+regime: linear, near the knee, saturated, collapsed
+constraint: the resource or architectural feature that limits the next step
+```
+
 ### The four top-down buckets
 
 | Bucket | Meaning | Dominant if |

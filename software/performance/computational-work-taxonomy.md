@@ -661,19 +661,22 @@ Better: call it dependency-free, then separately analyze shared resources.
 
 ### Scalable
 
-Meaningless unless you specify what scales:
+Meaningless unless you specify what scales and how it is measured. A scalability claim needs three parts:
 
-- throughput
-- latency under fixed load
-- latency under growing load
-- p99 latency
-- data size
-- tenant count
-- geographic footprint
-- engineering team size
-- cost efficiency
+1. **Scaling input.** What increases: offered load, cores, threads, nodes, disks, GPUs, partitions, replicas, data size, working set, tenant count, geographic footprint, or operational complexity?
+2. **Measured output.** What metric should remain acceptable: throughput, p50 latency, p99 latency, cost per unit, error rate, recovery time, or human operational burden?
+3. **Regime.** Where on the curve the system is operating: linear region, near the knee, saturated, or in collapse?
 
-Better: state the scaling dimension and target.
+Common scalability types:
+
+- **Load scalability.** What happens as offered traffic increases?
+- **Resource scalability.** What happens as resources are added?
+- **Data scalability.** What happens as dataset size or working set grows?
+- **Tenant scalability.** What happens as users, tenants, keys, shards, connections, or topics grow?
+- **Geographic scalability.** What happens as clients, replicas, and data span zones or regions?
+- **Operational scalability.** What happens to deployment, debugging, security, and cost management as the system grows?
+
+Better: say “throughput scales linearly to 32 workers before memory bandwidth saturates,” or “p99 latency stays under 200 ms until 8k RPS, then queueing begins.” Do not say “it scales” without the dimension, metric, and regime.
 
 ### Real-time
 
