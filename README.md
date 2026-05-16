@@ -10,6 +10,7 @@ Each file should be useful on its own. Prefer self-contained documents over docu
 ai/                    AI systems, agents, context engineering
   agent-instructions/  Drop-in directives for coding agents
   rl/                  Reinforcement learning for LLMs
+analysis/              General-purpose audit and distillation prompts for any artifact
 software/              Code quality, process, standards, systems
   architecture/        Codebase and system exploration mappers
   data/                Data-processing workload shapes and data-system concepts
