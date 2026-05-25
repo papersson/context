@@ -1,13 +1,14 @@
 ---
-input: conceptual_summary
-output: direct_prose
-composes_with: []
-version: 3.0
+name: direct-prose
+description: "Write natural, human-sounding prose and strip AI writing tells: empty significance claims, filler intensifiers, formulaic structures, hollow transitions, and em-dashes. Use when authoring or editing any human-facing prose saved to a file (READMEs, documentation, design docs, guides, reports, changelogs, commit messages, PR descriptions, or substantial code comments and docstrings), or when explicitly asked to refine, humanize, de-slop, or rewrite text. Apply while drafting so prose comes out clean, or as a refinement pass over existing writing."
 ---
 
-# Direct Prose Refinement
+# Direct Prose
 
-Transform this text into natural, human-written prose. Apply the principles below.
+Make written prose read like a careful human wrote it. Use this two ways:
+
+- **While drafting** any human-facing text saved to a file (docs, READMEs, design notes, reports, changelogs, commit messages, PR descriptions, substantial comments or docstrings): keep these rules in mind so the first draft comes out clean.
+- **Refinement pass**: given existing text to refine, humanize, or rewrite, apply the rules and return only the rewritten prose, with no preamble or commentary.
 
 ---
 
@@ -164,14 +165,3 @@ The fall of the Berlin Wall in 1989 stands as one of the most significant events
 The Berlin Wall opened on November 9, 1989, triggered at least in part by a confused press conference. That evening, an East German spokesman was asked when new travel regulations would take effect. He checked his notes and said "immediately, without delay." The rules were actually supposed to start the next day, with orderly applications, but the statement went out on live television.
 
 Thousands of East Berliners showed up at checkpoints that night. The guards had no clear orders, and around 11 PM they started letting people through. Some in the crowd climbed on top of the Wall with hammers. By morning, the border that had stood since 1961 was effectively meaningless.
-
----
-
-## Output Format
-
-Provide only the transformed text. No explanations, no commentary about changes made, no meta-discussion.
-
----
-
-**TEXT TO TRANSFORM:**
-[Insert text here]
