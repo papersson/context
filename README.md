@@ -11,6 +11,8 @@ ai/                    AI systems, agents, context engineering
   agent-instructions/  Drop-in directives for coding agents
   rl/                  Reinforcement learning for LLMs
 analysis/              General-purpose audit and distillation prompts for any artifact
+engineering/           Reliability, concurrency, and fault-tolerance references
+references/             Standalone essays on specific engineering ideas
 software/              Code quality, process, standards, systems
   architecture/        Codebase and system exploration mappers
   data/                Data-processing workload shapes and data-system concepts
