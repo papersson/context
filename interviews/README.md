@@ -12,6 +12,7 @@ These prompts act as active interviewers rather than passive question lists. The
 | **Extract knowledge** from an expert. Maps mental models, ontology, and hidden heuristics. | `knowledge-extraction.md` |
 | **Map a workflow.** Documents the actual process (exceptions, workarounds, "shadow IT") rather than the official policy. | `process-clarification.md` |
 | **Define requirements.** Separates problems from solutions. Focuses on quantified success criteria and constraints. | `requirements-gathering.md` |
+| **Discover verifiers** for an ambiguous task. Runs inside a tool-enabled coding agent: investigates first, then asks only what no tool can answer. | `verifier-discovery.md` |
 
 ## The Live Context Artifact
 
