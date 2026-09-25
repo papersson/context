@@ -1,75 +1,83 @@
 ---
 owner: Patrik Persson
-last_updated: 2026-09-24
+last_updated: 2026-09-25
 type: meta-prompt
-usage: "Turn a subject into a build prompt for a short self-contained explainer animation (HTML + Canvas)"
+usage: "Turn a subject into a build prompt for a short self-contained explainer lesson or animation (HTML + Canvas, optionally SVG + DOM text)"
 ---
 
 # Meta-Prompt: Generate Explainer Animation Prompt
 
-You write build prompts for short explainer animations: single self-contained HTML files, vanilla JS + Canvas 2D (+ WebAudio), no external assets. You do not build the animation yourself unless I ask. Your output is the prompt another agent will build from.
+You write build prompts for explainer lessons and animations: single self-contained HTML files, vanilla JS + Canvas 2D (+ SVG and DOM text in hybrid mode, + WebAudio), no external assets except a Google Fonts stylesheet. You do not build the lesson yourself unless I ask; your output is the prompt a builder agent will follow. If you can run agents and a browser, you also run the builder and check its work.
 
-SUBJECT: {{what I want animated}}
+SUBJECT: {{what I want explained}}
 
-## Step 1: Understand the mechanism
-Before asking me anything, work out what actually happens in the subject, causally, step by step. Collect:
-- The 4-8 physical or logical steps, in order. Each must show a cause and its visible effect.
-- The part the viewer can't normally see (too small, too fast, invisible), which needs a zoom inset or a slow-motion treatment.
-- 3-5 real details only this subject has: units, magnitudes, terms of art (for a hard drive: 7200 rpm = 120 rev/s, seek ~8.5 ms, rotational latency ~4.2 ms, flux transition = 1).
-If you're unsure of a fact, say so instead of inventing a number.
+## Step 1: Gather sources, then understand the mechanism
+Ground the lesson in primary material before writing anything. Lessons written from memory are the weakest ones.
+- Collect sources: clone the relevant repos (check their licences), fetch the paper or book, save transcripts. When sources are large, have agents read them and write notes with file:line or section/table references for every claim.
+- Then work out what actually happens, causally: 4-8 steps in order, each with a cause and a visible effect; the part the viewer can't normally see (too small, too fast, invisible), which needs a zoom inset or slow motion; and 3-5 real details only this subject has (units, magnitudes, terms of art, real field and function names).
+- Write a FACTS block: every number, name and claim the lesson will show, each with its source. Mark anything invented as "illustrative" or "constructed from the code". Say so when you are unsure instead of inventing.
+- Read the numbers critically. Headline claims often carry fine print (what "35x fewer" actually counts, which tasks an average covers); the lesson should show the fine print.
 
 ## Step 2: Ask me only what changes the spec
-Ask at most 4 questions, each with a recommended default, and only where my answer changes the result. Typical:
-- Audience and depth (curious adult / student / engineer).
-- Style: pixel art (default: 384x216 logical, 5x7 font), hand-drawn collage, or clean vector.
-- Mode: lesson (default: chapters of steps the viewer advances with Next/Back, each ending on a frozen, annotated frame) or ambient loop (30-60 s, seamless, for watching without interacting). A lesson can also autoplay.
-- Length: number of chapters and steps for a lesson, seconds for a loop.
-- Audio on or off (default on, starts on first click).
-- Where it will run: a one-shot chat (no feedback loop) or an agent that can open a browser and screenshot its own output (add the verification section).
-If the subject is clear and the defaults fit, skip the questions and say which defaults you picked.
+At most 4 questions, each with a recommended default, only where my answer changes the result. Typical:
+- Audience and depth (curious adult / engineer who knows the theory / expert).
+- Mode: stepped lesson (default: chapters of steps advanced with Next/Back, each ending on a frozen, annotated frame) or ambient loop.
+- Render mode: hybrid (default for text-, code- or math-heavy subjects: a pixel canvas for the picture, SVG for geometry, real DOM text for notes, code and readouts) or pure pixel (for pictorial or physical subjects: every pixel from a fixed palette, bitmap fonts).
+- Level of abstraction: concrete (real code and data) or first principles (my own clean abstractions, labelled "teaching model").
+If the defaults fit, skip the questions and say which you picked.
 
 ## Step 3: Storyboard, then prompt
-Show me a storyboard first. For a lesson: chapters, and within each chapter a table of steps with what moves, the moment it freezes, what gets spotlit, the note shown next to the event, and any question asked before a reveal. For a loop: phases with start time, duration, what moves and the caption. Revise it with me until I approve. Then write the build prompt with these sections:
+Show a storyboard first: chapters, and within each chapter a table of steps with what moves, the key frame it freezes on, what is spotlit, the note (at most 2 lines of 38 characters) and any question asked before a reveal. Revise it with me until I approve. Then write the build prompt with these sections:
 
-GOAL: one sentence on what the viewer should understand at the end.
+GOAL: what the viewer can explain at the end, as 3-6 numbered points.
+
+FACTS: the block from step 1, with sources. Every number on screen must come from here or be computed by the page.
 
 RENDERING
-- Style-specific rules. For pixel art: draw into a fixed logical buffer (Uint32Array over ImageData), blit at the largest integer scale that fits the window minus a 32px gutter, smoothing off, image-rendering: pixelated. Fixed palette of about 24 colours, every pixel from it. Built-in bitmap font, no fillText.
-- Anything that rotates is drawn per pixel from a precomputed (radius, angle) table, not with rotated sprites.
+- Hybrid mode: one 480x270 stage div scaled by an integer with transform: scale(k) and a 32 px gutter; inside it a canvas for the picture (image-rendering: pixelated), an SVG for geometry and leader lines, and a DOM layer for notes, code panels, readouts and real buttons, in a pixel font (e.g. Silkscreen) plus a readable monospace font for code. Palette as CSS custom properties mirrored into the canvas. Code panels can show fn.toString() of the live functions, so the code on screen is the code that ran.
+- Pixel mode: a fixed logical frame (384x216, or 480x270 when there is code), palette indices in a Uint8Array converted through a lookup table, a DIM table for the spotlight, integer scaling with a 32 px gutter. A 5x7 bitmap font over full printable ASCII with descenders (g, j, p, q, y), plus a small mono font for code. No fillText.
+- Anything that rotates is drawn per pixel from a precomputed (radius, angle) table.
 
-LAYOUT: main scene; one zoom inset for the invisible scale; a status panel with the phase name, live real-unit readouts and the caption. Give pixel coordinates for each region so they can't overlap.
+LAYOUT: regions with coordinates so nothing overlaps; notes next to their target with a leader line, never covering it.
 
-STORY: the chapters and steps (lesson) or phases (loop), with durations, what moves, and how motion eases (overshoot and settle where the real thing does). If time is scaled, show the factor on screen ("SLOWED 300X") and keep it honest.
+STEPS: the approved storyboard, with note texts verbatim.
 
-PEDAGOGY (for a lesson; apply the parts that fit to a loop)
-- The viewer sets the pace. Each step plays its motion, then freezes on its key frame and waits for Next. Back replays the previous step. Autoplay moves on after a hold long enough to read the note.
-- Spotlight and point. At each key frame, dim everything except the 2-3 parts involved, and put a short note (at most 2 lines) next to the event, with a leader line. Words sit next to what they describe, not in a distant panel.
-- Slow motion around events: about 0.3x through each cause and effect, faster through routine motion. Nothing important happens at full speed.
-- Change one thing at a time. When comparing variants (strategies, settings, algorithms), keep the scene identical and change only the variant, then end with the results side by side.
-- Ask before revealing. Before a decision the viewer can predict, pause with the candidates highlighted and a question ("Which children restart?"). Reveal on Next.
-- Show the case where it fails. If the concept holds only because of some property, include a step where that property is missing and the thing breaks.
-- Build up from simple. Introduce the parts one at a time and name each as it appears; add background activity only once it matters.
-- End with a recap frame summarising the chapters in one picture.
+PEDAGOGY
+- The viewer sets the pace: steps freeze on key frames; Right/Space/Next advances, Left/Back goes back, A toggles autoplay.
+- Spotlight the 2-3 parts that matter; dim the rest.
+- Slow motion through the cause and effect; faster through routine motion.
+- One variable at a time: compare variants on an identical scene.
+- Guess before reveal: before a predictable decision, show the candidates and a question; reveal nothing until Next.
+- Show the case where it fails (the counterexample that makes the rule necessary).
+- Build up from simple; name each part as it appears.
+- End with a recap frame.
+- Keep it minimal. Clean, sparse scenes teach better than busy ones: one idea per frame, few elements on screen, generous empty space.
 
-COLOUR ROLES: one colour per meaning (for example amber = commands, cyan = data, red = the thing being targeted), used the same way everywhere.
+COLOUR ROLES: one colour per meaning, used the same way everywhere.
 
-AUDIO: sounds tied to physical events (hum at the real frequency where one exists, a click on impact or settle, a tick per unit of data). Build nodes once, trigger with gain envelopes, start on first click, M to mute.
+AUDIO: sounds tied to events, nodes built once, gain envelopes, start on first click, M mutes.
 
 ENGINEERING
 - Fixed 60 Hz update, rAF render, no allocation in the loop.
-- Every visual is a pure function of position: time t for a loop, (step, t within the step) for a lesson. Any moment can be rendered on demand: ?t=<seconds>&paused=1 or ?step=<n>&t=<seconds>; expose window.__setTime(s) or window.__goto(step, s), plus window.__phase.
-- Seamless loop: anything periodic (rotation, patterns) must end the loop on a whole period.
-- Controls: in a lesson, Right/Space = Next, Left = Back, A toggles autoplay, with on-screen Next/Back buttons drawn in the pixel style and clickable. In a loop, Space pauses and arrows step ±1 s. prefers-reduced-motion disables autoplay and slow-motion easing but keeps stepping.
+- Every frame is a pure function of (step, t, selection). ?step=n&t=s&paused=1 renders that moment locally, but the page must start at step 1 with no query string (viewers strip it).
+- Test hooks: __goto(n, s), __steps, __state(), __hash() (a frame hash; in hybrid mode it includes DOM text and SVG attributes), __offPalette() (pixel mode), and __check(), which must return [] and covers: notes inside the stage, not covering their target, leaders not crossing text; no overlapping text boxes; every text fits its box; every element inside the stage; readouts equal a fresh recomputation; code panels equal their source.
+- Pure ASCII file (\u escapes). No DOCTYPE/html/head/body tags when the host adds its own skeleton.
 
-VERIFICATION (only when the builder can run a browser)
-- Screenshot every step's frozen key frame (lesson) or one moment per phase (loop).
-- For each shot, check that the thing the viewer must watch is visible and not hidden under a foreground object, that labels are legible at 1x, that numbers and captions match what is on screen, and that nothing clips at the window edge.
-- Assert that every pixel is in the palette (expose window.__offPalette()).
-- Fix and re-shoot until every check passes. Report what failed and what changed.
+VERIFICATION (when the builder can run a browser)
+- Screenshot every step's key frame and a few mid-motion frames (paused) at two viewport sizes; look at every one.
+- __check() is [] on every step; no console errors; __offPalette() is 0 in pixel mode.
+- Back from three steps matches a direct __goto by __hash.
+- Question steps reveal nothing.
+- Buttons and clicks work with real mouse events. Known tool gotchas: agent-browser mouse down/up fires at (0,0), so dispatch MouseEvents with clientX/clientY; `press` can open browser pages, so dispatch KeyboardEvents; serve the folder over a local HTTP server.
+- Code excerpts are checked against their source files by a script (shortening with "..." is fine, changed identifiers are not).
+- A fresh-eyes pass: a reviewer who sees only the screenshots, cold, reports anything unclear; fix it without changing the note texts.
+
+LIKELY MISTAKES: end with the 2-4 ways a builder is most likely to get this subject wrong.
 
 ## Rules for the prompt you write
-- Concrete over adjectival: pixel sizes, durations, colours, counts. No "stunning" or "polished".
-- Every phase must be checkable from a single screenshot.
-- Budget text against the font. For every label, caption and note, check it fits its region at the font's character width (6px per character for a 5x7 font), and list every character the subject needs, including lowercase and punctuation (for example Erlang atoms are lowercase).
-- Keep it under about 1200 words.
-- End by listing the 2-3 places a builder is most likely to go wrong for this subject (for the hard drive, the arm lying along the track hid the sector being read).
+- Concrete over adjectival: pixel sizes, durations, colours, counts.
+- Every step checkable from a single screenshot.
+- Budget text against the font (6 px per character at 5x7) and list every character the subject needs.
+- Originality: original characters and scenes only; no real people, teams or brands unless the subject requires them. Quote code only from permissively licensed sources, with credit; for other sources use your own summaries and short quotes.
+- Reuse the previous lesson's engine when one exists instead of rebuilding it.
+- Keep it under about 1500 words.
