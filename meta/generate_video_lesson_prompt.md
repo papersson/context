@@ -1,100 +1,172 @@
 ---
 owner: Patrik Persson
-last_updated: 2026-09-25
+last_updated: 2026-09-26
 type: meta-prompt
-usage: "Turn a lesson I want to learn into a build prompt for a narrated explainer video that an agent with a shell plans, voices, animates, renders and publishes end to end"
+usage: "Turn a lesson I want to learn into a build prompt for a narrated explainer video: an agent researches the canonical treatment in fresh contexts, writes a script that independent reviewers must pass, then produces and publishes the video"
 ---
 
 # Meta-Prompt: Generate Video Lesson Prompt
 
-You write build prompts for short narrated explainer videos: a voice-over read by a text-to-speech model, over animated diagrams rendered with Manim, cut to the narration's timing and published as an MP4 on a review page. You do not make the video yourself unless I ask. Your output is one self-contained prompt that a coding agent with a shell (Claude Code or similar) runs from start to finish in a fresh session.
+You write build prompts for narrated explainer videos: a voice-over read by a text-to-speech model, over animated diagrams rendered with Manim, cut to the narration's timing and published on a review page. You do not make the video yourself unless I ask. Your output is one self-contained prompt that a coding agent with a shell (Claude Code or similar) runs from start to finish in a fresh session.
+
+Two things decide the quality of these videos, and the build prompt is designed around both:
+
+- **The script is the product.** Animation only renders it. A video with a weak argument (a hook that never pays off, a tangent bolted on at the end) stays weak however good the visuals are, so the script is written, reviewed and locked before any visual work starts.
+- **The content must be canonical.** I am asking because I don't know the subject, so I can't catch mistakes, and neither can a model that has already committed to a framing. A context that holds a draft or an opinion anchors every later judgment to it. The build agent therefore gets its facts and its structure from research done in fresh contexts, and its script is judged by reviewers in fresh contexts, never by me and never in the context that wrote it.
+
+That second point applies to you as well. This chat is an anchoring context, so do not decide the content here: no canonical example, analogy, progression, demo or numbers. Anything you write about content ends up in the build prompt and steers the research.
 
 LESSON: {{what I want to learn, and what I already know}}
 
-## Step 1: Work out the lesson
+## Step 1: Pin down the request
 
-Before asking me anything, work out what the video has to teach and how it will show it.
+- The lesson as a topic or a question, in my words. Leave out the answer and the mechanism: "how B-trees keep disk lookups fast" is a lesson, while "how a high branching factor trades comparisons for fewer I/Os" is already content and would steer the research.
+- The audience and what they already know. Default: undergraduates who know the standard coursework underneath the lesson.
+- Ask at most two questions, and only when the answer changes the build prompt. Otherwise state the assumption in one line.
 
-- **The one idea.** One sentence on what the viewer should understand at the end, plus the payoff that makes it worth knowing. For out-of-core sorting: count block transfers, not operations, and a merge that takes as many runs as memory can hold sorts almost any file in two passes.
-- **The canonical example.** Pick the worked example that textbooks and practitioners use to teach this idea, say why, and name one or two alternatives you rejected and why. Prefer an example that extends something the audience already knows (external merge sort extends merge sort).
-- **An analogy that becomes a diagram.** Find one analogy that can be drawn as a fixed picture and reused in every scene. "Memory is your desk, disk is a warehouse across town, and a trip costs the same whether you carry one item or a crate" became a memory tray at the top, a disk strip at the bottom and a trip counter in the corner. The picture's geography never changes.
-- **Four running examples.** A hook at real scale (a 100 GB file on a laptop with 16 GB of memory). A toy sized so every step is visible and the arithmetic comes out exact (48 cards, 4 per block, memory for 16: three runs, and three input buffers plus one output buffer fill memory exactly). A simulation or measurement behind every comparative claim. The real-scale math (16 GiB of memory with 1 MiB blocks merges 16,383 runs at once).
-- **Real details only this subject has.** Units, magnitudes, formulas, defaults, tool names and what the tools print. For each one, note whether the agent can measure it in its environment, simulate it, or has to cite it.
-- **Claims that need care.** Popular claims that are wrong or only partly true, and numbers that depend on a parameter (the gap between heapsort and merge sort was 7× with 64-item blocks and 26.5× with 256-item blocks). Decide the wording that will survive checking.
+## Step 2: Write the build prompt
 
-If you're unsure of a fact, say so instead of inventing a number.
+Output the template below as one prompt. Fill in LESSON and AUDIENCE, and copy everything else unchanged: it records what earlier builds got wrong.
 
-## Step 2: Ask only what changes the spec
+---
 
-Ask at most 3 questions, each with a default, and skip them when the defaults fit:
-- Audience and prerequisites (default: undergraduates who know the standard coursework underneath the lesson).
-- Length (default: 5 minutes, about 750 words of narration).
-- Checkpoints (default: none, the agent runs end to end and I review the published page; alternatives are to stop after the plan, after the narration, or after a few concept frames).
+# Build a narrated video lesson
 
-The voice (Kokoro, af_heart), the tools and the visual language stay fixed unless I say otherwise.
+LESSON: {{the topic or question, in the requester's words, without the answer}}
+AUDIENCE: {{who, and what they already know}}
 
-## Step 3: Write the build prompt
+You will research, script, review, produce and publish a narrated explainer video, working in a new folder of the working repository and committing after each stage. The script is the product and everything else renders it, so do no visual work until the script is locked. No human will review the script: you lock it when independent reviewers pass it, so hold it to their standard.
 
-Above the prompt, give me five lines: the one idea, the canonical example, the analogy, the segment list with times, and the hero shots (the 3-4 frames that carry the lesson). Then write the prompt with the sections below. Copy the sections marked "include as written" unchanged; they come from failures in earlier builds.
+## Stage 1: Canonical research in fresh contexts
 
-GOAL: the one idea and its payoff, in two sentences.
+Whatever sits in your context (your own draft, an earlier framing, this prompt's wording) anchors your judgment. The lesson must teach established knowledge the way the standard sources teach it.
 
-AUDIENCE AND LENGTH: who the viewers are, what they already know, the target length, and the narration budget at about 150 words per minute of finished video. Kokoro af_heart at 0.92× speed speaks about 167 words per minute including pauses, and silent holds on the hero shots fill the rest.
+- Run two independent research passes in fresh contexts: a subagent with web access, and a headless `claude -p "..." < /dev/null` call. Give both the same neutral prompt, containing the lesson, the audience and the questions below. Never include your ideas, a draft or candidate answers.
+- The questions: the canonical worked example and why it is the standard one (and the main competitor); the standard progression, including which simpler version is shown first; the standard model, notation and what exactly is measured, with notation clashes between fields; the key results with exact formulas and their assumptions; the standard numeric examples from textbooks; the misconceptions students bring and how the canonical treatment corrects them; what is essential, a common extra, or out of scope for a short lesson; real systems canonically cited, with the mechanism each uses; claims that are commonly overstated or subtly wrong. Ask for citations (book, chapter or section, paper, year) and for uncertain items to be marked.
+- Save both reports in research/. Where they agree, treat it as canonical. Where they disagree or flag uncertainty, check a primary source.
+- Later, whenever you are about to rely on a fact you have not verified in this session (a tool's default, the exact wording a tool prints, a formula's exact form), check it in a fresh context or against a primary source. Reading local documentation counts: `zcat /usr/share/info/coreutils.info.gz` settled what GNU sort's merge width is for.
 
-LESSON CONTENT: the canonical example and why it was chosen, the analogy and the fixed diagram it becomes, the four running examples with exact numbers, the subject's real details, and the claims that need care with the wording each must take.
+## Stage 2: The argument
 
-SEGMENTS: 6-9 segments with start times. For each one, say what it teaches, draft the narration, describe what is on screen, name where its data comes from, and mark which moment gets a silent hold. Write narration for the ear: parameter names spoken as words ("M over B"), formulas described rather than read aloud, one idea per line. Open on a concrete hook the viewer can watch fail and succeed, and end on a recap that reuses earlier visuals.
+Write SCRIPT.md, starting with the argument, before any narration:
+
+- **Question.** The specific question the opening raises. The strongest openings show a real, runnable demonstration with a surprising outcome (the same memory, one program crashes, another finishes and leaves twelve temporary files behind).
+- **Answer.** How the ending answers that question, using the opening's own evidence.
+- **Takeaway.** The rule the viewer should leave with, in one or two sentences.
+- **Wrong model.** The intuition the audience brings that the lesson must dislodge. Take it from the canonical misconceptions.
+- **Objectives.** Three or four things the viewer can do afterwards.
+- **The chain.** One sentence per segment, each joined to the next by "but" or "therefore". Follow the canonical progression, and write down any deviation and the reason for it.
+- **Ledgers.** Setups and where each pays off. Vocabulary: every term, where it is first used, its definition, and no synonyms afterwards; use the canonical names. Numbers the viewer should remember: two or three.
+
+## Stage 3: Evidence
+
+- Every number spoken or shown comes from a run in this environment, a simulation written for this video, or a cited source. Typical published values are labelled as typical.
+- Measure what the script compares. If the script says two algorithms differ in one quantity and not another, measure both quantities.
+- A number that depends on the setup is spoken as the setup's number ("in our simulation, about three I/Os per item"), never as a general law.
+- Choose the demonstration's parameters so the arithmetic the narration states is exact, and fix the evidence rather than explaining a mismatch in a footnote. In one build, GNU sort with 100-byte records spent half its buffer on per-line bookkeeping, so a file six buffers long made twelve runs. With 10,000-byte records and a buffer given in bytes, the file was 11.6 buffers long and made twelve runs, and the script no longer needed the aside.
+- Use one unit system everywhere. Decimal megabytes and gigabytes are the default; a buffer written as `88M` is 88 MiB, and mixing that with a decimal file size produced an error an expert caught.
+- If the script says a real system behaves a certain way, capture the real output and replay it: terminal sessions, query plans, file listings. Scale runs down when needed and say so on screen.
+- Step-by-step animations of an algorithm replay an event log from a small instrumented implementation.
+- Keep an evidence table in SCRIPT.md: claim, how it was checked, value.
+
+## Stage 4: The script
+
+Narration is written for the ear: short clauses, parameter names spoken as words, formulas described in words rather than read out, and no more than one new number per sentence. When a number has a reason, say the reason ("eighteen doublings take you from one item to a quarter of a million"). Next to every narration line, write what is on screen at that moment; those notes become the scene specifications.
+
+Hold the script to these principles, each of which has a test:
+
+1. **One question, answered with its own evidence.** The last minute refers back to the first, and every part of the opening question is answered.
+2. **"But" and "therefore", never "and then".** Join the segment sentences. Any "and then" marks a list or a tangent.
+3. **Derive, don't reveal.** Before each new idea there is a visible problem that it fixes, so the viewer could almost have invented it.
+4. **Setups pay off, and payoffs are set up.** Check the ledger in both directions.
+5. **One vocabulary.** Every term is defined where it is first used, and no concept has two names.
+6. **A budget of numbers.** The viewer should retain two or three. The others support those and can live on screen.
+7. **Concrete before abstract.** A formula summarizes something the viewer already watched, and a general rule follows a concrete case.
+8. **Show the wrong model failing.** Show a result the wrong model cannot explain; it is not enough to argue against it.
+9. **Depth over breadth.** One application understood beats five that are only named. Generalizations get one sentence, or their own lesson.
+10. **Words and pictures split the work.** The narration explains, the picture shows, and on-screen text only labels. Text on screen that repeats the narration word for word is wasted.
+11. **The deletion test.** Delete each line in turn. If nothing later breaks and the takeaway doesn't weaken, the line goes.
+
+There is no length target and no limit. The script is as long as the argument needs after the deletion test. Estimate duration at about 150 words per minute of finished video. Engagement data on lecture videos (Guo, Kim and Rubin, 2014) found that watch time levels off around six minutes, so if the argument answers two separate questions, consider two videos, split where one question ends.
+
+## Stage 5: Review until the script passes
+
+Three reviewers, each a fresh context (`claude -p` with stdin closed, or a subagent), each given only what it needs:
+
+- **Expert:** the script with screen notes, plus the evidence table.
+- **Student:** the script with screen notes, nothing else.
+- **Editor:** the argument (question, answer, takeaway, wrong model, objectives) and the script with screen notes, but not your ledgers, so that it builds its own.
+
+Use these prompts, replacing {{paste AUDIENCE}} with the AUDIENCE line and placing the material after each prompt.
+
+Expert:
+> You are a professor who has taught this material for years. Below is the script of a short narrated explainer video, with a note of what is on screen at each moment, followed by the list of numbers it uses and where each comes from. Review it for correctness and canonicity. You are the only domain expert who will see it before it is produced, so be exacting. Report every problem with: severity (BLOCKING = wrong, misleading, or non-canonical in a way a professor would object to; SHOULD FIX = imprecise, a missing caveat, non-standard terminology; NIT), the exact quote, what is wrong, and the corrected wording. Check every factual and numerical claim including arithmetic and units; that terminology and notation match the standard sources and simplifications teach nothing false; whether anything essential is missing or anything peripheral gets too much weight; and overstated claims about optimality, generality and real systems. End with "VERDICT: PASS" if there are no BLOCKING items, otherwise "VERDICT: REVISE".
+
+Student:
+> You are a viewer from this audience: {{paste AUDIENCE}}. You have not studied this topic. Stay in role: if the script does not explain something, you do not know it. Below is the script of a short narrated video, with a note of what is on screen at each moment. Go through it once, in order, as if watching. (1) List every point where you would be confused or lose the thread, quoting the line: a term used before it is explained, a step that does not follow, a number with no meaning attached, a sentence hard to follow when heard. (2) List the questions you would ask afterwards. (3) Without looking back, write what you learned in about 150 words. (4) Answer: what is the one main idea; which numbers do you remember and what do they mean; what question did the video start with, and what was its answer? (5) Rate how much the opening made you want the answer (1-5) and how often you felt lost (never / once / a few times / often).
+
+Editor:
+> You are a script editor for educational videos. Below is the author's stated question, takeaway and objectives, and the script with a note of what is on screen. Judge the narrative, not the facts. For each finding give severity (BLOCKING / SHOULD FIX / NIT), the quote and a concrete rewrite. Tests: (1) does the opening raise one question that the ending answers, calling back to the opening; (2) write each segment as one sentence joined by "but", "therefore" or "and then", show the chain, and report every "and then"; (3) list ideas that are announced rather than derived from a visible problem; (4) list setups without payoffs and payoffs without setups; (5) list terms used before they are explained and concepts with more than one name; (6) list every number, name the two or three worth remembering, and flag numbers that do no work; (7) flag abstractions that arrive before the concrete case; (8) name the wrong intuition the video confronts and say whether it is shown failing; (9) flag examples that are named but not understood; (10) flag on-screen text that repeats the narration and pictures that do not support the line; (11) list lines that could be deleted without breaking anything; (12) flag sentences hard to follow aloud, and judge whether any beat is rushed or padded (there is no length target). End with "VERDICT: PASS" if there are no BLOCKING items, otherwise "VERDICT: REVISE".
+
+Rules for the loop:
+
+- After each round, revise and log every finding in SCRIPT.md: what changed, or why it was declined. Decline a finding only for a reason a domain expert would accept, and say what that reason is.
+- Run all three reviewers again after every revision. Fixes introduce new errors: in the build this template comes from, one round's revision introduced two blocking errors, and only the next round caught them.
+- Lock the script when the expert and the editor both return PASS and the student's retelling answers the opening question and covers every objective. The student may still lose some spoken arithmetic, but only where the screen notes show that arithmetic as it is said.
+- Check for these before the first round. Each one reached a reviewer in an earlier build:
+  - a ratio shown in the opening that doesn't match the count the script derives from it;
+  - decimal and binary units mixed in one video;
+  - an off-by-one in a capacity claim (a k-way merge needs k input blocks plus one for output), repeated in the recap;
+  - a simulation-specific number stated as a general fact;
+  - "same big-O, so same speed";
+  - a tool's behavior described slightly wrong (the Sort Method line appears in EXPLAIN ANALYZE, not EXPLAIN);
+  - a claim about the naive approach worded as a claim about a language;
+  - one word used at two scales (a "block" of kilobytes in one scene and a megabyte in another);
+  - a real tool's default that contradicts the rule just taught, left unexplained.
+
+## Stage 6: Production
+
+Only now plan the visuals, from the screen notes, one segment at a time. Every visual serves the beat its line belongs to.
 
 VISUAL LANGUAGE:
 - Dark background, IBM Plex Sans and IBM Plex Mono, 1920×1080 at 30 fps.
-- The analogy's fixed geography in every scene. Whatever unit the lesson counts moves only as a whole (a block never travels as loose cards).
-- Colour roles: one accent reserved for cost (amber), one for the current selection (ice blue), grey for idle. Values use a perceptually uniform colormap (seaborn "mako") and, in toy scenes, are also printed as numbers so colour is never the only cue.
-- A persistent counter for whatever the lesson says to count. It ticks only when that thing happens and stays visibly frozen during free work.
-- At most one formula on screen at a time, for about 4 seconds, and the narration says it in words.
+- One fixed picture of the lesson's main structure (for external sorting, memory on top and disk below) reused in every scene where it applies, with its geography unchanged.
+- Colour roles: one accent reserved for cost (amber), one for the current selection (ice blue), grey for idle. Values use a perceptually uniform colormap (seaborn "mako") and are also printed as numbers in close-up scenes, so colour is never the only cue.
+- A persistent counter for whatever the lesson counts, ticking only when that thing happens.
+- A formula appears only as a label for something already shown, or on the end card for reference.
 
-EVIDENCE (include as written):
-- Every number spoken or shown comes from a run in this environment, a simulation written for this video, or a cited source. Typical published values are labelled as typical.
-- Before finalizing the narration, run a quick check of every comparative or quantitative claim and word the line to match what the check found.
-- Real-world captures (terminal sessions, tool output, logs) are run scaled down when needed, labelled on screen with the scale, and replayed as clean animated UI rather than screen recordings.
-- Step-by-step animations of an algorithm replay an event log from a small instrumented implementation, so every move and every counter tick is correct by construction.
-- PLAN.md keeps a fact-check table: claim, how it was checked, result.
+PIPELINE:
+1. narration.py renders each line separately with Kokoro (voice af_heart, speed 0.92), trims Kokoro's own leading and trailing silence, and writes narration.wav, narration.mp3 and timings.json with each line's id, spoken text, caption text, start and end. Silence: 0.8 s lead-in, 0.45 s between lines, 1.2 s between segments, and holds after lines whose visuals need time. A segment's video runs from its first line to the next segment's first line. Keep spoken spellings ("Postgress", years in words) separate from caption spellings. Print every line's phonemes and respell anything mispronounced; you cannot listen, so this is the audio review.
+2. make_data.py writes every dataset the visuals use (simulation traces, event logs, images) to data/.
+3. One Manim Community scene per segment. A shared module holds the palette, fonts, the fixed picture, the counter and a cue helper: each scene loads its segment from timings.json, waits for a line with at(line_id, offset), and ends with finish(), which waits until the segment's exact length. Consecutive scenes either end and start on the same frame or fade through the background colour.
+4. Render every scene at 480p15, cut a contact sheet of frames at the cue times, and check it (see VERIFICATION). Re-render only the scenes that changed.
+5. build.py renders all scenes at 1920×1080 30 fps in parallel, checks each scene's length against its segment, concatenates them with ffmpeg, muxes the narration as AAC, writes WebVTT captions from timings.json, and encodes a web copy under 15 MB (libx264, CRF about 27, -tune animation).
 
-PIPELINE (include as written, filling in the subject's file names):
-1. In a new folder of the working repository, write PLAN.md: learning objectives, the canonical example and rejected alternatives, the analogy, the running examples, a segment table with times, the narration draft, a visual build list, style rules, the fact-check table and risks. Commit it.
-2. narration.py renders each line separately with Kokoro (voice af_heart, speed 0.92), trims Kokoro's own leading and trailing silence, and writes narration.wav, narration.mp3 and timings.json with each line's id, spoken text, caption text, start and end. Silence: 0.8 s lead-in, 0.45 s between lines, 1.2 s between segments, plus per-line holds after hero shots. A segment's video runs from its first line to the next segment's first line. Keep spoken spellings ("Postgress", "Rocks D B", years in words) separate from caption spellings. Print every line's phonemes and respell anything mispronounced; the agent cannot listen, so this is the audio review.
-3. make_data.py writes every dataset the visuals use (simulation traces, event logs, images) to data/.
-4. One Manim Community scene per segment. A shared module holds the palette, fonts, the fixed diagram, the counter and a cue helper: each scene loads its segment from timings.json, waits for a line with at(line_id, offset), and ends with finish(), which waits until the segment's exact length. Consecutive scenes either end and start on the same frame or fade through the background colour.
-5. Render every scene at 480p15, cut a contact sheet of frames at the cue times, and check it as described under VERIFICATION. Fix and re-render only the scenes that changed.
-6. build.py renders all scenes at 1920×1080 30 fps in parallel, checks each scene's length against its segment, concatenates them with ffmpeg, muxes the narration as AAC, writes WebVTT captions from timings.json, and encodes a web copy under 15 MB (libx264, CRF about 27, -tune animation).
-7. Build a review page: the video, a captions toggle, a chapter strip, the script with the current line highlighted and click-to-seek, and a list of where every number comes from. Publish it as a web page if the host offers one. Claude artifacts do not serve .vtt files, so embed the caption cues in the page and attach them with video.addTextTrack. Commit the sources, data, captures, narration mp3, web video and captions; keep the wav, the 1080p master and Manim's media folder out of git.
-8. Finish with the page link, the video length, and anything that could not be verified.
-
-ENVIRONMENT (include as written):
+ENVIRONMENT:
 - System packages: ffmpeg, espeak-ng, libcairo2-dev, libpango1.0-dev, pkg-config, fonts-ibm-plex. Python venv: manim, kokoro, torch, numpy, scipy, matplotlib, seaborn, soundfile.
-- Kokoro downloads its weights from huggingface.co, and the CPU build of torch comes from download.pytorch.org. If the network policy blocks a host, report the host and keep working on everything that does not need it: scenes can be written against timings estimated from word counts and re-rendered once the audio exists. Do not work around a policy block.
+- Kokoro downloads its weights from huggingface.co, and the CPU build of torch comes from download.pytorch.org. If the network policy blocks a host, report the host and keep working on everything that does not need it. Do not work around a policy block.
 - There is no LaTeX. Use Text and MarkupText; Pango markup handles subscripts.
 
-MANIM PITFALLS (include as written):
+MANIM PITFALLS:
 - Pango lays out small text with broken kerning (letters spread apart, spaces lost between words). Render every text at 4× its font size and scale it by 1/4.
 - Manim renders Text into a canvas as wide as the video and MarkupText into a 600 px canvas with wrapping, so 4× text wraps mid-line. Patch manimpango.text2svg and MarkupUtils.text2svg to use a wide canvas with no wrap width, and clear Manim's text cache after changing either.
 - Every animation lasts a whole number of frames. When many short events run back to back, compute each duration from the time left before the next cue instead of using a fixed value, or the sequence overruns the narration.
 - Text drops leading spaces. Indent code and terminal lines by measured character width.
 - For counters and other text that changes every frame, cache one Text object per value.
-- A mobject that is reachable only through a group that was removed stops rendering. When cards move between containers, remove and add the groups explicitly, and rebuild a scene's end state from scratch instead of fading back in something that was faded out.
+- A mobject that is reachable only through a group that was removed stops rendering. When items move between containers, remove and add the groups explicitly, and rebuild a scene's end state from scratch instead of fading back in something that was faded out.
 
-VERIFICATION (include as written):
-- For every segment, cut a contact sheet of frames at its cue times, first from the 480p15 preview and again from the final 1080p render.
-- In each frame, check that nothing overlaps or runs off the frame, every label is legible at 1080p, every number on screen matches the data and the narration, the thing the viewer must watch is visible and not covered, and each animation finishes before the line that follows it.
+VERIFICATION:
+- For every segment, cut a contact sheet of frames at its cue times, first from the 480p15 preview and again from the final render.
+- In each frame, check that nothing overlaps or runs off the frame, every label is legible at 1080p, every number on screen matches the evidence table and the narration, the thing the viewer must watch is visible, and each animation finishes before the line that follows it.
 - Every scene's length matches its segment within 0.1 s, and the video's length matches the narration's.
-- Report what failed and what changed.
 
-## Rules for the prompt you write
+## Stage 7: Delivery
 
-- Concrete over adjectival: sizes, durations, counts, colours, file names. No "engaging" or "polished".
-- Self-contained: the agent starts a fresh session with none of this conversation.
-- The prompt runs end to end unless I asked for checkpoints.
-- Keep it under about 1800 words, most of them in the fixed sections.
-- End by naming the 2-3 places where this subject's build is most likely to go wrong. For external merge sort they were: the heapsort vs. merge sort ratio depended on the block size, so the narration had to say "dozens of times fewer" and show both ratios; the fast tail of the 3-way merge overran into the next line until durations were computed from the time left; and small text lost its spacing until it was rendered at 4×.
+- A review page with the video, a captions toggle, a chapter strip, the script with the current line highlighted and click-to-seek, and a list of where every number comes from. Claude artifacts do not serve .vtt files, so embed the caption cues in the page and attach them with video.addTextTrack.
+- Commit the research reports, the locked script with its review log, the reviews, sources, data, captures, the narration mp3, the web video and captions. Keep the wav, the 1080p master and Manim's media folder out of git.
+- Finish with the page link, the video length, the number of review rounds, and anything you could not verify.
+
+---
 
 ## Example invocations
 
