@@ -7,16 +7,18 @@ usage: "Turn a lesson I want to learn into a build prompt for a narrated explain
 
 # Meta-Prompt: Generate Video Lesson Prompt
 
-You write build prompts for narrated explainer videos: a voice-over read by a text-to-speech model, over animated diagrams rendered with Manim, cut to the narration's timing and published on a review page. You do not make the video yourself unless I ask. Your output is one self-contained prompt that a coding agent with a shell (Claude Code or similar) runs from start to finish in a fresh session.
+You write build prompts for narrated explainer videos: a voice-over read by a text-to-speech model, over animated diagrams rendered with Manim, cut to the narration's timing and published on a minimal page where the learner can mark where they got lost. You do not make the video yourself unless I ask. Your output is one self-contained prompt that a coding agent with a shell (Claude Code or similar) runs from start to finish in a fresh session.
 
-Two things decide the quality of these videos, and the build prompt is designed around both:
+Three things decide the quality of these videos, and the build prompt is designed around all three:
 
 - **The script is the product.** Animation only renders it. A video with a weak argument (a hook that never pays off, a tangent bolted on at the end) stays weak however good the visuals are, so the script is written, reviewed and locked before any visual work starts.
 - **The content must be canonical.** I am asking because I don't know the subject, so I can't catch mistakes, and neither can a model that has already committed to a framing. A context that holds a draft or an opinion anchors every later judgment to it. The build agent therefore gets its facts and its structure from research done in fresh contexts, and its script is judged by reviewers in fresh contexts, never by me and never in the context that wrote it.
+- **The lesson is for one learner, and it improves in rounds.** No script starts with a perfect picture of what its learner understands. So the build starts from an explicit learner model (what they know, what they've said, where earlier lessons lost them), is built in chapters, and ships on a page with a "Lost me here" button. The learner's notes update the model and drive a revision of just the chapters they point at.
 
 That second point applies to you as well. This chat is an anchoring context, so do not decide the content here: no canonical example, analogy, progression, demo or numbers. Anything you write about content ends up in the build prompt and steers the research.
 
 LESSON: {{what I want to learn, and what I already know}}
+LEARNER: {{the learner model file, if there is one}}
 
 ## Step 1: Pin down the request
 
@@ -34,6 +36,7 @@ Output the template below as one prompt. Fill in LESSON and AUDIENCE, and copy e
 
 LESSON: {{the topic or question, in the requester's words, without the answer}}
 AUDIENCE: {{who, and what they already know}}
+LEARNER MODEL: {{paste the learner model, or "none yet: create one at tutor/learner.md from what the requester has said"}}
 
 You will research, script, review, produce and publish a narrated explainer video, working in a new folder of the working repository and committing after each stage. The script is the product and everything else renders it, so do no visual work until the script is locked. No human will review the script: you lock it when independent reviewers pass it, so hold it to their standard.
 
@@ -42,7 +45,7 @@ You will research, script, review, produce and publish a narrated explainer vide
 Whatever sits in your context (your own draft, an earlier framing, this prompt's wording) anchors your judgment. The lesson must teach established knowledge the way the standard sources teach it.
 
 - Run two independent research passes in fresh contexts: a subagent with web access, and a headless `claude -p "..." < /dev/null` call. Give both the same neutral prompt, containing the lesson, the audience and the questions below. Never include your ideas, a draft or candidate answers.
-- The questions: the canonical worked example and why it is the standard one (and the main competitor); the standard progression, including which simpler version is shown first; the standard model, notation and what exactly is measured, with notation clashes between fields; the key results with exact formulas and their assumptions; the standard numeric examples from textbooks; the misconceptions students bring and how the canonical treatment corrects them; what is essential, a common extra, or out of scope for a short lesson; real systems canonically cited, with the mechanism each uses; claims that are commonly overstated or subtly wrong. Ask for citations (book, chapter or section, paper, year) and for uncertain items to be marked.
+- The questions: the canonical worked example and why it is the standard one (and the main competitor); the standard progression, including which simpler version is shown first; the standard model, notation and what exactly is measured, with notation clashes between fields; the key results with exact formulas and their assumptions; the standard numeric examples from textbooks; the misconceptions students bring and how the canonical treatment corrects them; what is essential, a common extra, or out of scope for a short lesson; real systems canonically cited, with the mechanism each uses; claims that are commonly overstated or subtly wrong; which parts are best learned by watching a narrated animation, which by doing (an interactive simulation, running code, an exercise), and which by reading. Ask for citations (book, chapter or section, paper, year) and for uncertain items to be marked.
 - Save both reports in research/. Where they agree, treat it as canonical. Where they disagree or flag uncertainty, check a primary source.
 - Later, whenever you are about to rely on a fact you have not verified in this session (a tool's default, the exact wording a tool prints, a formula's exact form), check it in a fresh context or against a primary source. Reading local documentation counts: `zcat /usr/share/info/coreutils.info.gz` settled what GNU sort's merge width is for.
 
@@ -57,6 +60,8 @@ Write SCRIPT.md, starting with the argument, before any narration:
 - **Objectives.** Three or four things the viewer can do afterwards.
 - **The chain.** One sentence per segment, each joined to the next by "but" or "therefore". Follow the canonical progression, and write down any deviation and the reason for it.
 - **Ledgers.** Setups and where each pays off. Vocabulary: every term, where it is first used, its definition, and no synonyms afterwards; use the canonical names. Numbers the viewer should remember: two or three.
+
+Then decide the format of each chapter, and record it in SCRIPT.md as a table: chapter, format, why. Not every idea is best learned from a video. Timing, motion, and things that build up are good in narrated animation; a skill is learned by doing; reference detail is read. When a chapter would be better as a sandbox or an exercise, say so, and offer it separately instead of adding it to the video's page.
 
 ## Stage 3: Evidence
 
@@ -94,7 +99,7 @@ There is no length target and no limit. The script is as long as the argument ne
 Three reviewers, each a fresh context (`claude -p` with stdin closed, or a subagent), each given only what it needs:
 
 - **Expert:** the script with screen notes, plus the evidence table.
-- **Student:** the script with screen notes, nothing else.
+- **Student:** the learner model (background and standing instructions only, not the history of earlier notes) and the script with screen notes. The student plays that learner; with no learner model, it plays the AUDIENCE line.
 - **Editor:** the argument (question, answer, takeaway, wrong model, objectives) and the script with screen notes, but not your ledgers, so that it builds its own.
 
 Use these prompts, replacing {{paste AUDIENCE}} with the AUDIENCE line and placing the material after each prompt.
@@ -111,6 +116,7 @@ Editor:
 Rules for the loop:
 
 - After each round, revise and log every finding in SCRIPT.md: what changed, or why it was declined. Decline a finding only for a reason a domain expert would accept, and say what that reason is.
+- Apply every revision with a script that checks each replacement matched exactly once, and write nothing if any didn't. Start a round only after the revision is confirmed on disk, and have the harness refuse a round unless the script's status line names it; in the build this template comes from, two rounds started on half-applied revisions and had to be killed.
 - Run all three reviewers again after every revision. Fixes introduce new errors: in the build this template comes from, one round's revision introduced two blocking errors, and only the next round caught them.
 - The gate: the expert and the editor both return PASS, and the student's retelling answers the opening question and covers every objective. The student may still lose some spoken arithmetic, but only where the screen notes show that arithmetic as it is said.
 - Stopping rule: once a round passes the gate, apply that round's SHOULD FIX items once and run one final round. Lock the script if the final round also passes the gate. If it does not, fix the blocking items and run another round. Do not keep polishing NITs after a passing final round.
@@ -171,9 +177,20 @@ VERIFICATION:
 
 ## Stage 7: Delivery
 
-- A review page with the video, a captions toggle, a chapter strip, the script with the current line highlighted and click-to-seek, and a list of where every number comes from. Claude artifacts do not serve .vtt files, so embed the caption cues in the page and attach them with video.addTextTrack.
+- A minimal page: the video, a chapter strip, a captions toggle, and a "Lost me here" button. Nothing else: the script, sources and review log live in the repository, not on the page (a learner found a page with them "too busy"). Claude artifacts do not serve .vtt files, so embed the caption cues in the page and attach them with video.addTextTrack.
+- "Lost me here" pauses the video and shows the sentence on screen and the one before it, with an optional note. Saving writes a document to the artifact's database (declare the db capability; collection "feedback") with the time, chapter, both sentence ids and texts, the note, the lesson version and a timestamp. Show the learner their saved notes under a collapsed "N notes saved", with jump-to and delete. Hide the button when the database isn't available in that view.
 - Commit the research reports, the locked script with its review log, the reviews, sources, data, captures, the narration mp3, the web video and captions. Keep the wav, the 1080p master and Manim's media folder out of git.
 - Finish with the page link, the video length, the number of review rounds, and anything you could not verify.
+
+## Stage 8: Revise from the learner's notes
+
+When the learner has watched and left notes:
+1. Read the notes (ArtifactData, collection "feedback"). Each names a time, a chapter and the sentence on screen; the note may be empty, which still says "here".
+2. Update the learner model's evidence table with what each note shows (a skipped step, a term used before it was defined, two new ideas in one sentence, an example that didn't land, a pace problem), and adjust the standing instructions if a pattern appears.
+3. Revise only the chapters the notes point at: add the missing step, define the term, split the sentence, swap the example. Keep sentence ids stable where the text doesn't change.
+4. Run the three reviewers on the revised script, with the student playing the updated learner, until the lock criteria hold again.
+5. Re-narrate, re-render only the changed chapters, rebuild, and republish to the same page with a new version number. Mark each note as addressed (add the version that addressed it) instead of deleting it.
+6. Tell the learner what changed, chapter by chapter, and which notes each change answers.
 
 ---
 
