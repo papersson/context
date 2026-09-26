@@ -112,7 +112,9 @@ Rules for the loop:
 
 - After each round, revise and log every finding in SCRIPT.md: what changed, or why it was declined. Decline a finding only for a reason a domain expert would accept, and say what that reason is.
 - Run all three reviewers again after every revision. Fixes introduce new errors: in the build this template comes from, one round's revision introduced two blocking errors, and only the next round caught them.
-- Lock the script when the expert and the editor both return PASS and the student's retelling answers the opening question and covers every objective. The student may still lose some spoken arithmetic, but only where the screen notes show that arithmetic as it is said.
+- The gate: the expert and the editor both return PASS, and the student's retelling answers the opening question and covers every objective. The student may still lose some spoken arithmetic, but only where the screen notes show that arithmetic as it is said.
+- Stopping rule: once a round passes the gate, apply that round's SHOULD FIX items once and run one final round. Lock the script if the final round also passes the gate. If it does not, fix the blocking items and run another round. Do not keep polishing NITs after a passing final round.
+- Build each reviewer's input by cutting named sections out of SCRIPT.md, then check it before every round: the expert's input contains the evidence table, and no input contains the review log, the ledgers or earlier reviews. In the build this template comes from, a section reorder silently dropped the evidence table from the expert's input for nine rounds and showed all three reviewers part of the review log, and those rounds had to be rerun.
 - Check for these before the first round. Each one reached a reviewer in an earlier build:
   - a ratio shown in the opening that doesn't match the count the script derives from it;
   - decimal and binary units mixed in one video;
@@ -122,7 +124,8 @@ Rules for the loop:
   - a tool's behavior described slightly wrong (the Sort Method line appears in EXPLAIN ANALYZE, not EXPLAIN);
   - a claim about the naive approach worded as a claim about a language;
   - one word used at two scales (a "block" of kilobytes in one scene and a megabyte in another);
-  - a real tool's default that contradicts the rule just taught, left unexplained.
+  - a real tool's default that contradicts the rule just taught, left unexplained;
+  - two different examples called by the same words ("our file" for both the real file and the simulated one).
 
 ## Stage 6: Production
 
@@ -136,7 +139,7 @@ VISUAL LANGUAGE:
 - A formula appears only as a label for something already shown, or on the end card for reference.
 
 PIPELINE:
-1. narration.py renders each line separately with Kokoro (voice af_heart, speed 0.92), trims Kokoro's own leading and trailing silence, and writes narration.wav, narration.mp3 and timings.json with each line's id, spoken text, caption text, start and end. Silence: 0.8 s lead-in, 0.45 s between lines, 1.2 s between segments, and holds after lines whose visuals need time. A segment's video runs from its first line to the next segment's first line. Keep spoken spellings ("Postgress", years in words) separate from caption spellings. Print every line's phonemes and respell anything mispronounced; you cannot listen, so this is the audio review.
+1. narration.py reads the narration straight from the locked SCRIPT.md (the single source of truth, so the audio can never drift from the reviewed text), splits it into sentences with ids like s2_13, renders each sentence separately with Kokoro (voice af_heart, speed 0.92), trims Kokoro's own leading and trailing silence, and writes narration.wav, narration.mp3 and timings.json with each sentence's id, spoken text, caption text, start and end. Silence: 0.8 s lead-in, 0.3 s between sentences of a paragraph, 0.5 s between paragraphs, 1.2 s between segments, holds after sentences whose visuals need time, and a tail long enough to read the end card. A segment's video runs from its first line to the next segment's first line. Keep spoken spellings ("Postgress", years in words) separate from caption spellings. Print every line's phonemes and respell anything mispronounced; you cannot listen, so this is the audio review.
 2. make_data.py writes every dataset the visuals use (simulation traces, event logs, images) to data/.
 3. One Manim Community scene per segment. A shared module holds the palette, fonts, the fixed picture, the counter and a cue helper: each scene loads its segment from timings.json, waits for a line with at(line_id, offset), and ends with finish(), which waits until the segment's exact length. Consecutive scenes either end and start on the same frame or fade through the background colour.
 4. Render every scene at 480p15, cut a contact sheet of frames at the cue times, and check it (see VERIFICATION). Re-render only the scenes that changed.
@@ -153,10 +156,15 @@ MANIM PITFALLS:
 - Every animation lasts a whole number of frames. When many short events run back to back, compute each duration from the time left before the next cue instead of using a fixed value, or the sequence overruns the narration.
 - Text drops leading spaces. Indent code and terminal lines by measured character width.
 - For counters and other text that changes every frame, cache one Text object per value.
+- Scene.play takes animations, not mobjects: wrap a new arrow in Create or GrowArrow.
+- Animating set_opacity on a Group does not dim the ImageMobjects in it. Fade images out, or cover them with a rectangle in the background colour.
+- A counter whose digits are redrawn by an updater cannot be Indicated, because the updater overwrites the effect every frame. Circumscribe it instead.
 - A mobject that is reachable only through a group that was removed stops rendering. When items move between containers, remove and add the groups explicitly, and rebuild a scene's end state from scratch instead of fading back in something that was faded out.
 
 VERIFICATION:
 - For every segment, cut a contact sheet of frames at its cue times, first from the 480p15 preview and again from the final render.
+- Screen text says what the locked narration says, never a stronger version of it (in an earlier build a caption read "the count of I/Os is the cost" where the script said the I/Os "typically dominate"), and it adds no claim the evidence table does not cover. Check every on-screen sentence against the script and the evidence table.
+- Show a measurement while the narration sets it up, so the numbers are on screen when they are spoken rather than appearing as the line ends.
 - In each frame, check that nothing overlaps or runs off the frame, every label is legible at 1080p, every number on screen matches the evidence table and the narration, the thing the viewer must watch is visible, and each animation finishes before the line that follows it.
 - Every scene's length matches its segment within 0.1 s, and the video's length matches the narration's.
 
