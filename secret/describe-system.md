@@ -1,25 +1,25 @@
-# Describe a work system, anonymized
+# Describe a system, anonymized
 
 I'm studying testing and verification techniques (stateful property testing,
-deterministic simulation, fault injection, model checking) outside work, and I
-want to design exercises based on the shape of a real system instead of toy
-examples. Please look through the services and repos you can reach here and
-write me a description of how our system works, in a form I can safely take
-outside the company. The shape matters to me, not the specifics: what talks
+deterministic simulation, fault injection, model checking), and I want to
+design exercises based on the shape of a real system instead of toy examples.
+Please look through the services and repos you can reach here and write me a
+description of how this system fits together, in a form that is safe to share
+publicly. The shape matters to me, not the specifics: what talks
 to what, what state lives where, what each part assumes, and where timing
 and failure come in.
 
 ## Anonymization comes first
 
-This text will leave the company, so treat anonymization as a hard
+This text will be shared outside this environment, so treat anonymization as a hard
 requirement. No single detail should be identifying, and neither should any
 combination of details (a domain plus a team size plus an unusual
-technology choice can identify a company even with every name removed).
+technology choice can identify an organization even with every name removed).
 
 - Give every service, team, queue, topic and database a generic role name,
-  such as "ingest service", "billing worker" or "events topic A". Don't
+  such as "ingest service", "billing processor" or "events topic A". Don't
   write internal names, product names, customer or partner names, the
-  company's name, hostnames, URLs, repo names, ticket ids, people or dates.
+  organization's name, hostnames, URLs, repo names, ticket ids, people or dates.
 - Describe the business domain only in generic terms, such as "a record is
   created, enriched by two other services, then published". If the domain
   itself would be identifying, swap in an analogous neutral domain, and say
@@ -39,17 +39,17 @@ technology choice can identify a company even with every name removed).
 ## What to describe
 
 1. The map, kept rough: the main services and what each one owns (data or a
-   responsibility), whether we own it or another team or a vendor does, and
+   responsibility), whether this codebase owns it or another team or a vendor does, and
    how they communicate: synchronous calls, fire-and-forget messages,
    events, shared databases, scheduled or batch jobs. A plain-text diagram
    is welcome.
 
 2. One or two flows in depth. Pick the flows that cross the most services
    and matter most. Go step by step: who calls or messages whom, what state
-   changes where, and what "it worked" means once the flow is over. For each
+   changes where, and what "success" means once the flow is over. For each
    step, note whether it's synchronous or asynchronous, whether retrying it
    is safe (idempotent), and what happens on a timeout, an error, or a
-   timeout after the other side already did the work.
+   timeout after the other side already did its part.
 
 3. The asynchronous fire-and-forget calls, in the most depth. My biggest
    pain is messages that queue up and get processed much later than
@@ -96,8 +96,8 @@ consumer did when the message finally arrived.
 
 ## Before you hand it back
 
-Reread the whole text as an outsider who knows our industry and tries to
-work out which company, team or product this is. Remove or blur anything
+Reread the whole text as an outsider who knows the industry and tries to
+figure out which organization, team or product this is. Remove or blur anything
 that would help them, including combinations of details. Then list, in
 one line each, which kinds of things you removed or generalized (for
 example "replaced the domain with an analogous one", "dropped vendor

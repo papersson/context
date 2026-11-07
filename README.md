@@ -27,7 +27,7 @@ meetings/              Transcript cleaning and summarization
 meta/                  Prompt-generation and research-spec tools
 presentation/          Diagram and presentation-generation context
 security/              Security review and audit context
-secret/                Prompts for describing work systems (public repo: never commit work output here)
+secret/                Prompts for describing systems in anonymized form
 ```
 
 ## Usage
